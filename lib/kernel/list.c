@@ -118,7 +118,7 @@ list_prev (struct list_elem *elem) {
    {
    struct foo *f = list_entry (e, struct foo, elem);
    ...do something with f...
-   }`
+   }
    */
 struct list_elem *
 list_rend (struct list *list) {

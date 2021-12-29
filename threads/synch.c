@@ -65,9 +65,10 @@ void sema_down (struct semaphore *sema) { // 어떠한 공유자원을 사용할
 
 	old_level = intr_disable ();
 	while (sema->value == 0) { // 누군가가 그 자원을 쓰고 있다면 (busywaiting?)
-		// list_push_back (&sema->waiters, &sema->waiters);
+		list_push_back (&sema->waiters, &thread_current()->elem);
         /* 우선순위를 반영하여 특정 공유자원을 사용하기를 기다리는 대기리스트에 추가 */
-		list_insert_ordered(&sema->waiters, &thread_current()->elem, thread_compare_priority, 0);
+		// list_insert_ordered(&sema->waiters, &thread_current()->elem, thread_compare_priority, 0);
+        // 할 필요가 없다.
 		thread_block (); // 블록상태로 만들어줌.
 	}
 	sema->value--; // 앞에 쓰던놈이 다쓰고 나가면 sema up 을 해주기 때문에 자원을
@@ -295,8 +296,8 @@ void cond_wait (struct condition *cond, struct lock *lock) {
 	ASSERT (lock_held_by_current_thread (lock));
 
 	sema_init (&waiter.semaphore, 0);
-	// list_push_back (&cond->waiters, &waiter.elem);
-	list_insert_ordered(&cond->waiters, &waiter.elem, sema_compare_priority, 0);
+	list_push_back (&cond->waiters, &waiter.elem);
+	// list_insert_ordered(&cond->waiters, &waiter.elem, sema_compare_priority, 0);
 	lock_release (lock);
 	sema_down (&waiter.semaphore);
 	lock_acquire (lock);

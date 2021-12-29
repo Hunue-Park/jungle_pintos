@@ -630,10 +630,6 @@ allocate_tid (void) {
 	return tid;
 }
 
-void insert_sleep_list(void){
-	list_push_back(&sleep_list, &thread_current()->elem);
-}
-
 bool thread_compare_priority(struct list_elem *higher, struct list_elem *lower, void *aux UNUSED) {
 	return list_entry(higher, struct thread, elem)->priority > list_entry(lower, struct thread, elem)->priority;
 }
@@ -661,7 +657,7 @@ void donate_priority(void) {
 	int depth;
 	struct thread *cur = thread_current();
 
-	for (depth = 0; depth < 8; depth++) {		// depth 8까지 왜?
+	for (depth = 0; depth < 8; depth++) {		// depth 8까지 왜? - 도네이션이 무한히 많을 수 있기 때문에
 		if (cur->wait_on_lock == NULL) {
 			break;
 		}
@@ -693,11 +689,11 @@ void refresh_priority(void) {
 	cur->priority = cur->init_priority;
 
 	if (!list_empty(&cur->donations)) {
-		list_sort(&cur->donations, thread_compare_donate_priority, 0);
+		// list_sort(&cur->donations, thread_compare_donate_priority, 0);
 
 		struct thread *front = list_entry(list_front(&cur->donations), struct thread, donation_elem);
-		if (front->priority > cur->priority) {
-			cur->priority = front->priority;
-		}
+		// if (front->priority > cur->priority) {
+        cur->priority = front->priority;
+		// }
 	}
 }
