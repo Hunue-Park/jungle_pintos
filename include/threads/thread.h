@@ -149,4 +149,8 @@ void do_iret (struct intr_frame *tf);
 void thread_sleep (int64_t ticks);
 void thread_awake (int64_t ticks);
 
+// priority scheduling 함수
+void thread_test_preemption (void);
+bool thread_compare_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+
 #endif /* threads/thread.h */
