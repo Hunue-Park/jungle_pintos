@@ -95,7 +95,15 @@ struct thread {
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 
+	// 알람시계 일어날 시간. 
 	int64_t wakeup;
+
+	// priority donation
+	int init_priority;  // 최초 스레드 우선순위 저장.
+
+	struct lock *wait_on_lock;  // 현재 스레드가 요청했는데 받지못한 lock. 기다리는중
+	struct list donations; // 자신에게 priority 를 나누어준 '쓰레드'의 리스트
+	struct list_elem donation_elem; // 위의 스레드 리스트를 관리하기위한 element. thread 구조체의 elem과 구분.
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
@@ -137,6 +145,16 @@ void thread_yield (void);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
+
+// priority donation
+bool
+thread_compare_donate_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+void 
+donate_priority (void);
+void
+remove_with_lock (struct lock *lock);
+void
+refresh_priority (void);
 
 int thread_get_nice (void);
 void thread_set_nice (int);
