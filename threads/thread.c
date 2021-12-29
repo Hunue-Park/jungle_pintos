@@ -28,6 +28,9 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
+// 알람 시계용 리스트 추가. 
+static struct list sleep_list;
+
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -44,6 +47,7 @@ static struct list destruction_req;
 static long long idle_ticks;    /* # of timer ticks spent idle. */
 static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
 static long long user_ticks;    /* # of timer ticks in user programs. */
+
 
 /* Scheduling. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
@@ -110,6 +114,9 @@ thread_init (void) {
 	list_init (&ready_list);
 	list_init (&destruction_req);
 
+	// 슬립 리스트 초기화. 
+	list_init (&sleep_list);
+
 	/* Set up a thread structure for the running thread. */
 	initial_thread = running_thread ();
 	init_thread (initial_thread, "main", PRI_DEFAULT);
@@ -132,6 +139,46 @@ thread_start (void) {
 	/* Wait for the idle thread to initialize idle_thread. */
 	sema_down (&idle_started);
 }
+
+// 알람시계 슬립함수 구현
+void
+thread_sleep (int64_t ticks)
+{
+	struct thread *cur = thread_current ();
+	enum intr_level old_level;
+	ASSERT(!intr_context());
+	old_level = intr_disable(); // 인터럽트 끔
+	cur->wakeup = ticks;
+	if (cur != idle_thread)
+	{
+		list_push_back(&sleep_list, &cur->elem);
+	}
+	do_schedule(THREAD_BLOCKED);
+	intr_set_level(old_level);
+}
+
+void 
+thread_awake (int64_t ticks)
+{
+	struct list_elem *e = list_begin(&sleep_list);
+	struct thread *t;
+
+	for (e; e != list_end(&sleep_list);)
+	{
+		t = list_entry(e, struct thread, elem);
+		if (t->wakeup <= ticks)
+		{
+			e = list_remove(&t->elem);
+			thread_unblock(t);
+		}
+		else
+		{
+			e = list_next(e);
+		}
+	}
+}
+
+
 
 /* Called by the timer interrupt handler at each timer tick.
    Thus, this function runs in an external interrupt context. */
