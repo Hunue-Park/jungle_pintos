@@ -87,13 +87,22 @@ typedef int tid_t;
  * blocked state is on a semaphore wait list. */
 struct thread {
 	/* Owned by thread.c. */
-	tid_t tid;                          /* Thread identifier. */
+	tid_t tid;
 	enum thread_status status;          /* Thread state. */
 	char name[16];                      /* Name (for debugging purposes). */
-	int priority;                       /* Priority. */
+	int priority;
+	int64_t wakeup_tick;
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
+
+	int64_t sleep_ticks;
+
+	// for donation
+	int init_priority;
+	struct lock *wait_on_lock;
+	struct list donations;
+	struct list_elem donation_elem;
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
@@ -105,7 +114,7 @@ struct thread {
 #endif
 
 	/* Owned by thread.c. */
-	struct intr_frame tf;               /* Information for switching */
+	struct intr_frame tf;               // Information for switching(레지스터, 스택 포인터 포함)
 	unsigned magic;                     /* Detects stack overflow. */
 };
 
@@ -144,3 +153,18 @@ int thread_get_load_avg (void);
 void do_iret (struct intr_frame *tf);
 
 #endif /* threads/thread.h */
+
+void thread_sleep(int64_t ticks);
+void thread_awake(int64_t ticks);
+
+int64_t get_next_tick_to_awake(void);
+void update_next_tick_to_awake(int64_t ticks);
+
+bool thread_compare_priority(struct list_elem *higher, struct list_elem *lower, void *aux UNUSED);
+void preemption(void);
+bool sema_compare_priority(const struct list_elem *higher, const struct list_elem *lower, void *aux UNUSED);
+bool thread_compare_donate_priority(const struct list_elem *higher, const struct list_elem *lower, void *aux UNUSED);
+
+void donate_priority(void);
+void remove_with_lock(struct lock *lock);
+void refresh_priority(void);
