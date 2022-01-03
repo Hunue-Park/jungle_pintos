@@ -26,6 +26,7 @@ static void process_cleanup (void);
 static bool load (const char *file_name, struct intr_frame *if_);
 static void initd (void *f_name);
 static void __do_fork (void *);
+// void argument_stack_for_user(char ** argv, int argc, struct intr_frame *if_);
 
 /* General process initializer for initd and other process. */
 static void
@@ -48,7 +49,11 @@ process_create_initd (const char *file_name) {
 	fn_copy = palloc_get_page (0);
 	if (fn_copy == NULL)
 		return TID_ERROR;
-	strlcpy (fn_copy, file_name, PGSIZE);
+	strlcpy (fn_copy, file_name, PGSIZE); //fn_copy 에 file_name을 PGSIZE 만큼 복사
+
+    // // pro2
+    // char *tmp_use; //pro2
+    // strtok_r(file_name, " ", &tmp_use);
 
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
@@ -164,7 +169,6 @@ int
 process_exec (void *f_name) {
 	char *file_name = f_name;
 	bool success;
-
 	/* We cannot use the intr_frame in the thread structure.
 	 * This is because when current thread rescheduled,
 	 * it stores the execution information to the member. */
@@ -176,17 +180,72 @@ process_exec (void *f_name) {
 	/* We first kill the current context */
 	process_cleanup ();
 
+        //pro2
+    // char *file_name = f_name;
+    int argc = 0;
+    char *argv[64];
+    char *ret_ptr, *next_ptr;
+
+    //parse argument and put to argv[] with argc++
+    ret_ptr = strtok_r(file_name, " ", &next_ptr); // filename = grep, next_ptr = foo bar
+    while (ret_ptr){
+        argv[argc++] = ret_ptr;
+        ret_ptr = strtok_r(NULL, " ", &next_ptr);
+    }
+
 	/* And then load the binary */
 	success = load (file_name, &_if);
 
 	/* If load failed, quit. */
-	palloc_free_page (file_name);
-	if (!success)
+	if (!success){
+        palloc_free_page (file_name); //?
 		return -1;
+    }
+
+    argument_stack_for_user(argv, argc, &_if);
+
+    hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, 1); // for debugging
+
+    palloc_free_page (file_name); //?
 
 	/* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
+}
+
+// argument parsing for project 2
+void argument_stack_for_user(char ** argv, int argc, struct intr_frame *if_){
+
+    // argument stack to rsp register (stack)
+    for(int i = argc - 1; i >= 0; i--){
+        int N = strlen(argv[i]) + 1; // for sentinel as '\0'
+        if_->rsp -= N;
+        memcpy(if_->rsp, argv[i], N);
+        argv[i] = (char *)if_->rsp; // for address of first letter of argv which is if_->rsp
+    }
+
+    // 8의 배수(word-align)로 맞춰주기
+    int padding = 8 - if_->rsp % 8;
+    if_->rsp -= padding;
+    memset(if_->rsp, 0, padding);
+
+
+    if_->rsp -= 8; // for sentinel
+    memset(if_->rsp, 0, 8);
+
+    // put address
+    for(int i = argc - 1; i >= 0; i--){
+        if_->rsp -= 8;
+        memcpy(if_->rsp, &argv[i], 8);
+    }
+
+    // fake return address
+    if_->rsp -= 8;
+    memset(if_->rsp, 0, 8);
+
+    /* rdi 에는 인자의 개수, rsi 에는 argv 첫 인자의 시작 주소 저장*/
+    if_->R.rdi = argc;
+    if_->R.rsi = if_->rsp + 8; // fake return address + 8
 }
 
 
@@ -204,6 +263,7 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
+    while(1){}
 	return -1;
 }
 
@@ -414,8 +474,11 @@ load (const char *file_name, struct intr_frame *if_) {
 	/* Start address. */
 	if_->rip = ehdr.e_entry;
 
-	/* TODO: Your code goes here.
+    /* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
+
+    /* pro2 */
+
 
 	success = true;
 

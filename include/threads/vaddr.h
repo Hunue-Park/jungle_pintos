@@ -18,7 +18,7 @@
 #define PGSHIFT 0                          /* Index of first offset bit. */
 #define PGBITS  12                         /* Number of offset bits. */
 #define PGSIZE  (1 << PGBITS)              /* Bytes in a page. */
-#define PGMASK  BITMASK(PGSHIFT, PGBITS)   /* Page offset bits (0:12). */
+#define PGMASK  BITMASK(PGSHIFT, PGBITS)   /* Page offset bits (0:12). */ // 1이 12개 (Pysical offset 찾기위한 연산)
 
 /* Offset within a page. */
 #define pg_ofs(va) ((uint64_t) (va) & PGMASK)
@@ -26,7 +26,7 @@
 #define pg_no(va) ((uint64_t) (va) >> PGBITS)
 
 /* Round up to nearest page boundary. */
-#define pg_round_up(va) ((void *) (((uint64_t) (va) + PGSIZE - 1) & ~PGMASK))
+#define pg_round_up(va) ((void *) (((uint64_t) (va) + PGSIZE - 1) & ~PGMASK)) // PGSIZE = ~PGMASK
 
 /* Round down to nearest page boundary. */
 #define pg_round_down(va) (void *) ((uint64_t) (va) & ~PGMASK)
@@ -55,5 +55,6 @@
 	ASSERT(is_kernel_vaddr(vaddr)); \
 	((uint64_t) (vaddr) - (uint64_t) KERN_BASE);\
 })
+// 백슬래쉬는 \n 을 씹을려고 하는 것 같음 (디파인은 한줄로 써야함.)
 
 #endif /* threads/vaddr.h */
