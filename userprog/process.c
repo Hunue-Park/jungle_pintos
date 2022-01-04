@@ -26,6 +26,7 @@ static void process_cleanup (void);
 static bool load (const char *file_name, struct intr_frame *if_);
 static void initd (void *f_name);
 static void __do_fork (void *);
+void put_arg_to_stack(const char **argv, int argc, struct intr_frame *_if);
 
 /* General process initializer for initd and other process. */
 static void
@@ -181,8 +182,10 @@ process_exec (void *f_name) {
 
 	/* If load failed, quit. */
 	palloc_free_page (file_name);
-	if (!success)
+	if (!success){
 		return -1;
+	}
+	hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, 1);
 
 	/* Start switched process. */
 	do_iret (&_if);
@@ -204,6 +207,9 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
+
+	// while (1){}
+	
 	return -1;
 }
 
@@ -329,6 +335,16 @@ load (const char *file_name, struct intr_frame *if_) {
 	bool success = false;
 	int i;
 
+	char *argv[64];
+	int argc = 0;
+	char *ret_ptr, *next_ptr;
+	ret_ptr = strtok_r(file_name, " ", &next_ptr);
+	while(ret_ptr) {
+		argv[argc] = ret_ptr;
+		ret_ptr = strtok_r(NULL, " ", &next_ptr);
+		argc++;
+	}
+
 	/* Allocate and activate page directory. */
 	t->pml4 = pml4_create ();
 	if (t->pml4 == NULL)
@@ -413,6 +429,8 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	/* Start address. */
 	if_->rip = ehdr.e_entry;
+
+	put_arg_to_stack(argv, argc, if_);
 
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
@@ -568,6 +586,34 @@ install_page (void *upage, void *kpage, bool writable) {
 	 * address, then map our page there. */
 	return (pml4_get_page (t->pml4, upage) == NULL
 			&& pml4_set_page (t->pml4, upage, kpage, writable));
+}
+
+void put_arg_to_stack(const char **argv, int argc, struct intr_frame *_if){
+
+	for (int i = argc -1; i >=0; i--) {
+		int arg_len = strlen(argv[i])+1;
+		_if->rsp = _if->rsp - (arg_len);
+		memcpy(_if->rsp, argv[i], arg_len);
+		argv[i] = (char *)_if->rsp;
+	}
+	while (_if->rsp % 8 != 0) {
+		_if->rsp--;
+		*(int8_t *)(_if->rsp) = 0;
+	}
+	for(int i = argc; i>=0; i--){
+		_if->rsp -= 8;
+		if (i == argc)
+			memset(_if->rsp, 0, sizeof(char **));
+		else
+			memcpy(_if->rsp, &argv[i], sizeof(char **));
+	}
+
+	_if->rsp -= 8;
+	memset(_if->rsp, 0, sizeof(uint8_t **));
+
+	_if->R.rdi = argc;
+	_if->R.rsi = _if->rsp + 8;
+
 }
 #else
 /* From here, codes will be used after project 3.
