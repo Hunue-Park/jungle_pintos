@@ -226,8 +226,25 @@ tid_t thread_create (const char *name, int priority, thread_func *function, void
 		return TID_ERROR;
 
 	/* Initialize thread. */
-	init_thread (t, name, priority);
-	tid = t->tid = allocate_tid ();
+	init_thread (t, name, priority); //need to check for project 2
+
+    // project2 for allocation of fd
+	t->fd_table = palloc_get_multiple(PAL_ZERO, FDT_PAGES);
+	if (t->fd_table == NULL)
+		return TID_ERROR;
+	t->fd_idx = 2; // do not need std_error which is originally 2
+
+    t->fd_table[0] = 1;
+	t->fd_table[1] = 2;
+	t->stdin_count = 1;
+	t->stdout_count = 1;
+
+    ///////////////
+
+    tid = t->tid = allocate_tid ();
+    struct thread *cur = thread_current();
+	list_push_back(&cur->child_list, &t->child_elem); //child 스레드 주소를 부모의 차일드 리스트에 삽입
+
 
 	/* Call the kernel_thread if it scheduled.
 	 * Note) rdi is 1st argument, and rsi is 2nd argument. */
@@ -290,7 +307,8 @@ thread_name (void) {
 /* Returns the running thread.
    This is running_thread() plus a couple of sanity checks.
    See the big comment at the top of thread.h for details. */
-struct thread *thread_current (void) {
+struct thread
+*thread_current (void) {
 	struct thread *t = running_thread ();
 
 	/* Make sure T is really a thread.
@@ -441,6 +459,7 @@ static void init_thread (struct thread *t, const char *name, int priority) {
 
 	memset (t, 0, sizeof *t);
 	t->status = THREAD_BLOCKED;
+    
 	strlcpy (t->name, name, sizeof t->name);
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
@@ -450,6 +469,13 @@ static void init_thread (struct thread *t, const char *name, int priority) {
 	t->init_priority = priority;
 	t->wait_on_lock = NULL;
 	list_init(&t->donations);
+
+    // update for project 2
+	list_init(&t->child_list);
+	sema_init(&t->wait_sema, 0);
+	sema_init(&t->fork_sema, 0);
+	sema_init(&t->free_sema, 0);
+    t->running = NULL;
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
@@ -505,8 +531,8 @@ do_iret (struct intr_frame *tf) {
    added at the end of the function. */
 static void
 thread_launch (struct thread *th) {
-	uint64_t tf_cur = (uint64_t) &running_thread ()->tf;
-	uint64_t tf = (uint64_t) &th->tf;
+	uint64_t tf_cur = (uint64_t) &running_thread ()->tf; //부모
+	uint64_t tf = (uint64_t) &th->tf; //차일드
 	ASSERT (intr_get_level () == INTR_OFF);
 
 	/* The main switching logic.
