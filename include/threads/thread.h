@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include <threads/synch.h>
 #include "threads/interrupt.h"
 #ifdef VM
 #include "vm/vm.h"
@@ -27,6 +28,10 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
+
+/* project 2 - system call*/
+#define FDT_PAGES 3
+#define FDCOUNT_LIMIT FDT_PAGES * (1 << 9)
 
 /* A kernel thread or user process.
  *
@@ -116,6 +121,25 @@ struct thread {
 	/* Owned by thread.c. */
 	struct intr_frame tf;               // Information for switching(레지스터, 스택 포인터 포함)
 	unsigned magic;                     /* Detects stack overflow. */
+
+	/* project 2 - system call*/
+	int exit_status;
+	
+	struct list child_list;	
+	struct list_elem child_elem;
+	
+	struct semaphore wait_sema;
+	struct semaphore fork_sema;
+	struct semaphore free_sema;
+
+	struct intr_frame parent_if;
+
+	struct file **fd_table;
+	struct file *running;
+	int fd_idx;
+	
+	int stdin_count;
+	int stdout_count;
 };
 
 /* If false (default), use round-robin scheduler.

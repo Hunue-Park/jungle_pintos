@@ -227,7 +227,24 @@ tid_t thread_create (const char *name, int priority, thread_func *function, void
 
 	/* Initialize thread. */
 	init_thread (t, name, priority);
+
+	/* project 2 - system call*/
+	t->fd_table = palloc_get_multiple(PAL_ZERO, FDT_PAGES);
+	if(t->fd_table == NULL)
+	{
+		return TID_ERROR;
+	}
+	t->fd_idx = 2;
+
+	t->fd_table[0] = 1;
+	t->fd_table[1] = 2;
+	t->stdin_count = 1;
+	t->stdout_count = 1;
+
 	tid = t->tid = allocate_tid ();
+
+	struct thread *cur = thread_current();
+	list_push_back(&cur->child_list, &t->child_elem);
 
 	/* Call the kernel_thread if it scheduled.
 	 * Note) rdi is 1st argument, and rsi is 2nd argument. */
@@ -441,6 +458,7 @@ static void init_thread (struct thread *t, const char *name, int priority) {
 
 	memset (t, 0, sizeof *t);
 	t->status = THREAD_BLOCKED;
+
 	strlcpy (t->name, name, sizeof t->name);
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
@@ -450,6 +468,13 @@ static void init_thread (struct thread *t, const char *name, int priority) {
 	t->init_priority = priority;
 	t->wait_on_lock = NULL;
 	list_init(&t->donations);
+
+	list_init(&t->child_list);
+	sema_init(&t->wait_sema, 0);
+	sema_init(&t->fork_sema, 0);
+	sema_init(&t->free_sema, 0);
+
+	t->running = NULL;
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should

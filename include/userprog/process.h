@@ -9,5 +9,9 @@ int process_exec (void *f_name);
 int process_wait (tid_t);
 void process_exit (void);
 void process_activate (struct thread *next);
+/* project 2 - system call*/
+void argument_stack(char **argv, int argc, struct intr_frame *if_);
+
+struct thread *get_child_with_pid(int pid);
 
 #endif /* userprog/process.h */

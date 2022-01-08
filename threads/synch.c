@@ -117,7 +117,10 @@ void sema_up (struct semaphore *sema) { // 공유자원 다쓰고 나서 딴놈�
 					struct thread, elem)); // 공유자원을 사용하려는 쓰레드의 현재 상태인 block 상태를 해제시키고 레디 리스트에 넣어줌
 	}
 	sema->value++; // 공유자원에 대한 소유권 버림
+	if(!intr_context())
+	{
 	preemption(); // 현재 프로세스를 점유하고 있는 (running 상태) 쓰레드 보다
+	}
     // 방금 레디리스트에 추가된 쓰레드의 우선순위가 더높을수 있기 때문에
     // 선점이 가능하다면 선점 시킴
 	intr_set_level (old_level);
