@@ -26,26 +26,13 @@ static void process_cleanup (void);
 static bool load (const char*, struct intr_frame*);
 static void initd (void*);
 static void __do_fork (void*);
-struct thread* thread_child(int); /* project2 - put tid and return child thread ptr */
+
 
 
 /* General process initializer for initd and other process. */
 static void
 process_init (void) {
 	struct thread *current = thread_current ();
-}
-
-/* project2 - put tid and return child thread ptr */
-struct thread*
-thread_child(int tid){
-    struct thread *cur = thread_current();
-    struct list *child_list = &cur->child_list;
-
-    for(struct list_elem *e = list_begin(child_list); e!=list_end(child_list); e=list_next(e)){
-        struct thread *child = list_entry(e, struct thread, child_elem);
-        if(child->tid == tid) return child;
-    }
-    return NULL;
 }
 
 /* Starts the first userland program, called "initd", loaded from FILE_NAME.
@@ -65,7 +52,7 @@ process_create_initd (const char *file_name) {
 		return TID_ERROR;
 	strlcpy (fn_copy, file_name, PGSIZE); //fn_copy 에 file_name을 PGSIZE 만큼 복사
 
-    // pro2
+    // project 2
     char *tmp_use;
     strtok_r(file_name, " ", &tmp_use);
 
@@ -82,9 +69,7 @@ initd (void *f_name) {
 #ifdef VM
 	supplemental_page_table_init (&thread_current ()->spt);
 #endif
-
-	process_init ();
-
+	// process_init (); ?????????????????????
 	if (process_exec (f_name) < 0)
 		PANIC("Fail to launch initd\n");
 	NOT_REACHED ();
@@ -136,8 +121,7 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) { //하다 말음
 	/* 3. TODO: Allocate new PAL_USER page for the child and set result to
 	 *    TODO: NEWPAGE. */
     newpage = palloc_get_page(PAL_USER);
-	if (newpage == NULL)
-	{
+	if (newpage == NULL){
 		printf("[fork-duplicate] failed to palloc new page\n"); // #ifdef DEBUG
 		return false;
 	}
@@ -160,6 +144,11 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) { //하다 말음
 }
 #endif
 
+struct map_elem{
+    uintptr_t key;
+    uintptr_t value;
+};
+
 /* A thread function that copies parent's execution context.
  * Hint) parent->tf does not hold the userland context of the process.
  *       That is, you are required to pass second argument of process_fork to
@@ -170,11 +159,10 @@ __do_fork (void *aux) {
 	struct thread *parent = (struct thread *) aux;
 	struct thread *current = thread_current ();
 	/* TODO: somehow pass the parent_if. (i.e. process_fork()'s if_) */
-	struct intr_frame *parent_if = &parent->pif; // pro2 update
 	bool succ = true;
 
 	/* 1. Read the cpu context to local stack. */
-	memcpy (&if_, parent_if, sizeof (struct intr_frame));
+	memcpy (&if_, &parent->pif, sizeof (struct intr_frame));
     if_.R.rax = 0; // return value sholud be 0
 
 
@@ -199,11 +187,41 @@ __do_fork (void *aux) {
 	 * TODO:       the resources of parent.*/
 
     //project 2 , check the limit
-	if (parent->fd_idx == FDCOUNT_LIMIT)
+	if (parent->fd_idx >= FDCOUNT_LIMIT)
         goto error;
 
-    current->fd_idx = parent->fd_idx;
+    const int map_len = 10;
+    struct map_elem map[10];
+    int dup_count = 0;
 
+    for (int i = 2; i < FDCOUNT_LIMIT; i++){
+        struct file *file = parent->fd_table[i];
+        if (!file) continue;
+
+        // bool found = false;
+        // for(int j = 0; j < map_len; j ++){
+        //     if (map[j].key == file){
+        //         found = true;
+        //         current -> fd_table[i] = map[j].value;
+        //         break;
+        //     }
+        // }
+        // if (!found){
+        struct file *new_file;
+        if (file > 2)
+            new_file = file_duplicate(file);
+        else
+            new_file = file;
+
+        current -> fd_table[i] = new_file;
+        if (dup_count < map_len){
+            map[dup_count].key = file;
+            map[dup_count].value = new_file;
+            dup_count++;
+        }
+        // }
+    }
+    current->fd_idx = parent->fd_idx;
     sema_up(&current->fork_sema);
 
 	/* Finally, switch to the newly created process. */
@@ -232,8 +250,7 @@ process_exec (void *f_name) {
 	/* We first kill the current context */
 	process_cleanup ();
 
-        //pro2
-    // char *file_name = f_name;
+    //project 2
     int argc = 0;
     char *argv[64];
     char *ret_ptr, *next_ptr;
@@ -245,14 +262,11 @@ process_exec (void *f_name) {
         ret_ptr = strtok_r(NULL, " ", &next_ptr);
     }
 
-    process_cleanup();
-
 	/* And then load the binary */
 	success = load (file_name, &_if);
 
 	/* If load failed, quit. */
 	if (!success){
-        palloc_free_page (file_name); //?
 		return -1;
     }
 
@@ -303,6 +317,20 @@ void argument_stack_for_user(char ** argv, int argc, struct intr_frame *if_){
     if_->R.rsi = if_->rsp + 8; // fake return address + 8
 }
 
+/* project2 - put tid and return child thread ptr */
+struct thread*
+thread_child(int tid){
+    struct thread *cur = thread_current();
+    struct list *child_list = &cur->child_list;
+
+    if (list_empty(child_list)) return NULL;
+    for(struct list_elem *e = list_begin(child_list); e !=list_end(child_list); e=list_next(e)){
+        struct thread *child = list_entry(e, struct thread, child_elem);
+        if(child->tid == tid) return child;
+    }
+    return NULL;
+}
+
 
 /* Waits for thread TID to die and returns its exit status.  If
  * it was terminated by the kernel (i.e. killed due to an
@@ -321,7 +349,6 @@ process_wait (tid_t child_tid UNUSED) {
 
     // project 2
     struct thread *child = thread_child(child_tid);
-
     if (!child) return -1; //자식이 없으면 -1 리턴
 
     sema_down(&child->wait_sema); // 자식이 wait sema를 올릴떄까지 block 상태
@@ -346,15 +373,14 @@ process_exit (void) {
 	 * TODO: We recommend you to implement process resource cleanup here. */
 
 	// open 파일 모두 닫기
-	for (int i = 0; i < FDCOUNT_LIMIT; i++)
-	{
+	for (int i = 0; i < cur->fd_idx; i++){
 		close(i);
 	}
 	//  free all pages in fdtable
 	palloc_free_multiple(cur->fd_table, FDT_PAGES);
 
 	// project2 close running file with unprevent writing
-	file_close(cur->running); // 그 위치를 다시 쓸 수 이쎅 한다?
+	file_close(cur->running); // 그 위치를 다시 쓸 수 있게 한다?
 
 	process_cleanup();
 
@@ -567,12 +593,10 @@ load (const char *file_name, struct intr_frame *if_) {
 
     /* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
-
 	success = true;
 
 done:
 	/* We arrive here whether the load is successful or not. */
-	// file_close (file);
 	return success;
 }
 

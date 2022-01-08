@@ -1,49 +1,53 @@
-#include "userprog/syscall.h"
 #include <stdio.h>
 #include <syscall-nr.h>
-#include "threads/interrupt.h"
-#include "threads/thread.h"
-#include "threads/loader.h"
-#include "userprog/gdt.h"
-#include "threads/flags.h"
 #include "intrinsic.h"
+#include "threads/thread.h"
+#include "threads/interrupt.h"
+#include "threads/loader.h"
+#include "threads/flags.h"
+#include "userprog/gdt.h"
+#include "userprog/syscall.h"
 
-#include "filesys/filesys.h"
-#include "filesys/file.h"
+/* project 2 added */
 #include "threads/palloc.h"
 #include "userprog/process.h"
+#include "filesys/filesys.h"
+#include "filesys/file.h"
+#include "lib/kernel/console.h" // putbuf()
+
 #include "vm/vm.h"
+
+// #include "include/lib/stdio.h" //STDIN_FILENO, STDOUT_FILENO,
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
 
 // for project 2
+void check_address(const uint64_t*);
 void halt(void);
 void exit(int);
 tid_t fork (const char *);
 int exec(const char *);
 int wait (tid_t);
-bool create(const char *, unsigned);
-bool remove(const char *);
-int open(const char *);
-int filesize(int );
-int read(int, void *, unsigned);
-int write(int, const void *, unsigned);
+bool create(const char*, unsigned);
+bool remove(const char*);
+int open(const char*);
+int filesize(int);
+int read(int, void*, unsigned);
+int write(int, const void*, unsigned);
 void seek(int, unsigned);
 unsigned tell(int);
 void close(int);
-void check_address(const uint64_t*);
 
+int dup2(int, int); //project2 - extra work
 
-// int dup2(int, int); //project2 - extra work
-
-int process_add_file (struct file *);
+int process_add_file (struct file*);
 struct file* process_get_file (int);
 void process_close_file (int);
 
-const int STDIN = 1;
-const int STDOUT = 2;
-struct lock file_lock;
+int STDIN = 1;
+int STDOUT = 2;
+
 
 /* System call.
  *
@@ -71,7 +75,6 @@ syscall_init (void) {
 
     //project2 lock_init
     lock_init(&filesys_lock);
-    lock_init(&file_lock);
 }
 
 /* The main system call interface */
@@ -94,7 +97,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
             f->R.rax = fork(f->R.rdi);
             break;
 
-        case SYS_EXEC: ;
+        case SYS_EXEC:
             check_address(f->R.rdi);
             if (exec(f->R.rdi) == -1) exit(-1);
             break;
@@ -103,17 +106,18 @@ syscall_handler (struct intr_frame *f UNUSED) {
             f->R.rax = wait(f->R.rdi);
             break;
 
-        case SYS_CREATE: ;
+        case SYS_CREATE:
             check_address(f->R.rdi);
+            // check_address(f->R.rdi + f->R.rsi);
             f->R.rax = create(f->R.rdi, f->R.rsi);
             break;
 
-        case SYS_REMOVE: ;
+        case SYS_REMOVE:
             check_address(f->R.rdi);
             f->R.rax = remove(f->R.rdi);
             break;
 
-        case SYS_OPEN: ;
+        case SYS_OPEN:
             check_address(f->R.rdi);
             f->R.rax = open(f->R.rdi);
             break;
@@ -122,12 +126,12 @@ syscall_handler (struct intr_frame *f UNUSED) {
             f->R.rax = filesize(f->R.rdi);
             break;
 
-        case SYS_READ: ;
+        case SYS_READ:
             check_address(f->R.rsi); //check buffer size
             f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
             break;
 
-        case SYS_WRITE: ;
+        case SYS_WRITE:
             check_address(f->R.rsi); //check buffer size
             f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
             break;
@@ -144,11 +148,10 @@ syscall_handler (struct intr_frame *f UNUSED) {
             close(f->R.rdi);
             break;
 
-
         /* Extra for Project 2 */
-        // case SYS_DUP2:
-        //     f->R.rax = dup2(f->R.rdi, f->R.rsi);
-        //     break;
+        case SYS_DUP2:
+            f->R.rax = dup2(f->R.rdi, f->R.rsi);
+            break;
 
 
         /* Project 3 and optionally project 4. */
@@ -176,7 +179,7 @@ void halt(void){
 void exit(int status){
     struct thread *cur = thread_current();
     cur->exit_status = status;
-    printf ("%s: exit(%d)\n", thread_name(), status);
+    printf ("%s: exit(%d)\n", cur->name, status);
     thread_exit();
 }
 
@@ -212,15 +215,13 @@ bool remove(const char *file){
 }
 
 int open(const char *file){
-    if (!file){
-        return -1;
-    }
-
+    // if (!file){
+    //     return -1;
+    // }
     struct file *file_obj = filesys_open(file);
     if (!file_obj){
         return -1;
     }
-
     int fd = process_add_file(file_obj);
     if (fd == -1)
         file_close(file_obj);
@@ -242,10 +243,10 @@ int read(int fd, void *buffer, unsigned size){
 	if (!file_obj) return -1;
 
 	if (file_obj == STDIN) {
-		if (cur->stdin_count == 0) {
+		if (!cur->stdin_count) {
 			NOT_REACHED(); //? 잘 모르겠다.
-            process_close_file(fd);
-            return -1;
+            // process_close_file(fd);
+            // return -1;
 		}
         else{
             int i;
@@ -262,28 +263,27 @@ int read(int fd, void *buffer, unsigned size){
             return i;
         }
 	}
-	if (file_obj == STDOUT) return -1;
+	else if (file_obj == STDOUT) return -1;
 
     /* fild_read -> Returns the number of bytes actually read*/
-	lock_acquire (&filesys_lock);
-	read_bytes = file_read(file_obj, buffer, size);
-	lock_release (&filesys_lock);
-
+    else{
+        lock_acquire (&filesys_lock);
+        read_bytes = file_read(file_obj, buffer, size);
+        lock_release (&filesys_lock);
+    }
 	return read_bytes;
 }
 
 int write(int fd, const void *buffer, unsigned size){
 	int written_bytes;
-
 	struct file *file_obj = process_get_file(fd);
-	if (!file_obj) return -1;
-
-
 	struct thread *cur = thread_current ();
 
+	if (!file_obj) return -1;
     if (file_obj == STDIN) return -1;
+
 	if (file_obj == STDOUT) {
-		if (cur->stdout_count == 0){
+		if (!cur->stdout_count){
 			NOT_REACHED();
 			process_close_file(fd);
 			return -1;
@@ -329,12 +329,11 @@ void close(int fd){
 	else if (file_obj == STDOUT || fd == 1)
 		cur->stdout_count --;
 
-
 	process_close_file(fd);
 	if (fd <= 1 || file_obj <= 2) return;
 
 
-	if (file_obj->dup_count == 0)
+	if (!file_obj->dup_count)
 		file_close(file_obj);
 	else
 		file_obj->dup_count --;
@@ -342,9 +341,31 @@ void close(int fd){
 
 //extra
 
-// int dup2(int oldfd, int newfd){
+int dup2(int old_fd, int new_fd){
+    struct file *old_file = process_get_file(old_fd);
+    if (!old_fd) return -1;
 
-// }
+    struct file *new_file = process_get_file(new_fd);
+    if (old_fd == new_fd) return new_fd;
+
+    struct thread *cur = thread_current();
+    struct file **fdt = cur->fd_table;
+
+    if (old_file == 1){
+        cur->stdin_count++;
+    }
+
+    else if (old_file == 2){
+        cur->stdout_count++;
+    }
+
+    else{
+        old_file->dup_count++;
+    }
+    close(new_fd);
+    fdt[new_fd] = old_file;
+    return new_fd;
+}
 
 int process_add_file (struct file *f){
 	struct thread *cur = thread_current();

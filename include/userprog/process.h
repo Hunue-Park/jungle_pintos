@@ -9,6 +9,7 @@ int process_exec (void *f_name);
 int process_wait (tid_t);
 void process_exit (void);
 void process_activate (struct thread *next);
-void argument_stack_for_user(char ** argv, int argc, struct intr_frame *if_);
+void argument_stack_for_user(char ** argv, int argc, struct intr_frame *if_); /* project2 */
+struct thread* thread_child(int); /* project2 - put tid and return child thread ptr */
 
 #endif /* userprog/process.h */

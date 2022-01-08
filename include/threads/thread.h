@@ -121,23 +121,24 @@ struct thread {
     struct semaphore wait_sema;
     struct semaphore fork_sema;
     struct semaphore free_sema;
-    struct intr_frame pif; /*remember caller if?*/
+    struct intr_frame pif; /* remember caller's intr_frame (when fork child)*/
     struct list child_list;
 	struct list_elem child_elem;
 
     // for file
     struct file **fd_table; //쓰레드 create 에서 할당
     int fd_idx; //fd 테이블의 open index
+
     struct file *running; // deny exec write
     int stdin_count;
     int stdout_count;
-
     /* ----------------------------------project2*/
 
 
-#ifdef USERPROG
+// #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
+#ifdef USERPROG
 #endif
 #ifdef VM
 	/* Table for whole virtual memory owned by thread. */
