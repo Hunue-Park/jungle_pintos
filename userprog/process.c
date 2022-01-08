@@ -15,6 +15,7 @@
 #include "threads/interrupt.h"
 #include "threads/palloc.h"
 #include "threads/thread.h"
+#include "threads/synch.h"
 #include "threads/mmu.h"
 #include "threads/vaddr.h"
 #include "intrinsic.h"
@@ -52,7 +53,10 @@ process_create_initd (const char *file_name) {
 	strlcpy (fn_copy, file_name, PGSIZE);
 
 	/* Create a new thread to execute FILE_NAME. */
-	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
+
+	char *new_file_name , *next_ptr;
+	new_file_name = strtok_r(fn_copy, " ", &next_ptr);
+	tid = thread_create (new_file_name, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
 	return tid;
@@ -77,8 +81,15 @@ initd (void *f_name) {
 tid_t
 process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	/* Clone current thread to new thread.*/
-	return thread_create (name,
-			PRI_DEFAULT, __do_fork, thread_current ());
+	struct thread *curr_thread = thread_current();
+	memcpy(&curr_thread->tf, if_, sizeof(struct intr_frame));
+	tid_t child_tid;
+
+	child_tid =  thread_create (name,
+			curr_thread->priority, __do_fork, curr_thread);
+	if (child_tid == -1){
+		
+	}
 }
 
 #ifndef VM
@@ -123,7 +134,7 @@ __do_fork (void *aux) {
 	struct thread *parent = (struct thread *) aux;
 	struct thread *current = thread_current ();
 	/* TODO: somehow pass the parent_if. (i.e. process_fork()'s if_) */
-	struct intr_frame *parent_if;
+	struct intr_frame *parent_if = &parent->tf;
 	bool succ = true;
 
 	/* 1. Read the cpu context to local stack. */
@@ -149,12 +160,14 @@ __do_fork (void *aux) {
 	 * TODO:       in include/filesys/file.h. Note that parent should not return
 	 * TODO:       from the fork() until this function successfully duplicates
 	 * TODO:       the resources of parent.*/
+	current->fd_table = parent->fd_table;
 
-	process_init ();
+	
 
 	/* Finally, switch to the newly created process. */
 	if (succ)
 		do_iret (&if_);
+		
 error:
 	thread_exit ();
 }
@@ -185,7 +198,7 @@ process_exec (void *f_name) {
 	if (!success){
 		return -1;
 	}
-	hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, 1);
+	// hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, 1);
 
 	/* Start switched process. */
 	do_iret (&_if);
@@ -208,7 +221,10 @@ process_wait (tid_t child_tid UNUSED) {
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
 
+	// for (int i = 0; i<INT32_MAX; i++)
 	// while (1){}
+	struct thread t = *child_tid;
+	
 	
 	return -1;
 }
@@ -221,7 +237,8 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-
+	printf("%s: exit(%d)", curr->name, curr->exit_status);
+	//과연 tf의 rdi가 f의 rdi가 같을까?
 	process_cleanup ();
 }
 

@@ -240,6 +240,16 @@ tid_t thread_create (const char *name, int priority, thread_func *function, void
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 
+	sema_init (t->free_sema, 0);
+	sema_init (t->fork_sema, 0);
+	sema_init (t->wait_sema, 0);
+
+	list_init (&t->child_list);
+	list_init (&t->child_list_elem);
+
+	t->fd_table = palloc_get_multiple(PAL_ZERO, 2);
+	t->next_fd = 2;
+
 	/* Add to run queue. */
 	thread_unblock (t);
 	preemption();
@@ -445,6 +455,8 @@ static void init_thread (struct thread *t, const char *name, int priority) {
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
 	t->magic = THREAD_MAGIC;
+
+	t->exit_status = NULL;
 
 	// update for project 1 (donate priority)
 	t->init_priority = priority;

@@ -93,6 +93,10 @@ struct thread {
 	int priority;
 	int64_t wakeup_tick;
 
+	int64_t exit_status;
+	struct list child_list;
+	struct list_elem child_list_elem;
+
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 
@@ -103,6 +107,14 @@ struct thread {
 	struct lock *wait_on_lock;
 	struct list donations;
 	struct list_elem donation_elem;
+
+	int64_t next_fd;
+	struct file **fd_table;
+
+	struct semaphore *free_sema;
+	struct semaphore *fork_sema;
+	struct semaphore *wait_sema;
+	
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
