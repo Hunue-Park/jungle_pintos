@@ -344,7 +344,7 @@ process_exit (void) {
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
 	/* project 2 - system call*/
-	printf("%s: exit(%d)\n", curr->name, curr->exit_status);
+	// printf("%s: exit(%d)\n", curr->name, curr->exit_status);
 	
 	for (int i = 0; i < FDCOUNT_LIMIT; i++)
 	{
