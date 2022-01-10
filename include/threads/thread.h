@@ -5,6 +5,7 @@
 #include <list.h>
 #include <stdint.h>
 #include "threads/interrupt.h"
+#include "threads/synch.h"
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -105,6 +106,19 @@ struct thread {
 	struct list donations; // 자신에게 priority 를 나누어준 '쓰레드'의 리스트
 	struct list_elem donation_elem; // 위의 스레드 리스트를 관리하기위한 element. thread 구조체의 elem과 구분.
 
+	// Project 2
+	int exit_status;    // child 프로세스의 exit status를 parent에게 전달하기 위함.
+	struct file **fd_table;  
+	struct file *running;
+	struct semaphore wait_sema;  // parent 프로세스가 child 프로세스를 기다리기 위함.
+	struct semaphore free_sema;  // parent 프로세스의 종료를 child 프로세스의 종료 시그널을 받을때까지로 미룸
+	struct semaphore fork_sema;  // child 의 fork 가 완료될때까지 parent는 기다린다. (__do_fork)
+	struct list child_list;  // children 리스트
+	struct list_elem child_elem;  // 현재 스레드를 children list에 집어넣기 위함.
+	int fd_idx;   // fdTable의 인덱스
+	struct intr_frame parent_if;  // 자신의 intr_frame을 보존하고 fork시에 child 프로세스에 전달.
+	int stdin_count;
+	int stdout_count;
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
@@ -171,4 +185,10 @@ void thread_awake (int64_t ticks);
 void thread_test_preemption (void);
 bool thread_compare_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 
+// project2
+#define FDT_PAGES 3
+#define FDCOUNT_LIMIT FDT_PAGES *(1 << 9) 
+
+
 #endif /* threads/thread.h */
+

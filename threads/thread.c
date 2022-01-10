@@ -238,6 +238,22 @@ thread_create (const char *name, int priority,
 
 	/* Initialize thread. */
 	init_thread (t, name, priority);
+	// project 2-4 File descriptor
+	t->fd_table = palloc_get_multiple(PAL_ZERO, FDT_PAGES);
+	if (t->fd_table == NULL)
+		return TID_ERROR;
+	t->fd_idx = 2;  // 0: stdin, 1: stdout
+	// 2-extra
+	t->fd_table[0] = 1; // dummy values
+	t->fd_table[1] = 2; // dummy values 
+	t->stdin_count = 1;
+	t->stdout_count = 1;
+	tid = t->tid = allocate_tid ();
+
+	// project 2. parent push new child to child list
+	struct thread *cur = thread_current();
+	list_push_back(&cur->child_list, &t->child_elem);
+
 	tid = t->tid = allocate_tid ();
 
 	/* Call the kernel_thread if it scheduled.
@@ -463,6 +479,14 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->init_priority = priority;
 	t->wait_on_lock = NULL;
 	list_init (&t->donations);
+
+	// project 2-3 System call
+	list_init(&t->child_list);
+	sema_init(&t->wait_sema, 0);
+	sema_init(&t->fork_sema, 0);
+	sema_init(&t->free_sema, 0);
+	// project 2-5 
+	t->running = NULL;
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
