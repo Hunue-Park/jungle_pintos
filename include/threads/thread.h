@@ -5,6 +5,7 @@
 #include <list.h>
 #include <stdint.h>
 #include "threads/interrupt.h"
+#include "threads/synch.h" //added to use structure semaphore
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -91,22 +92,53 @@ struct thread {
 	enum thread_status status;          /* Thread state. */
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;
-	int64_t wakeup_tick;
+
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 
-	int64_t sleep_ticks;
 
-	// for donation
+	/* projet1--------------------------------- */
+
+    //for priority donation
 	int init_priority;
 	struct lock *wait_on_lock;
 	struct list donations;
 	struct list_elem donation_elem;
 
-#ifdef USERPROG
+    // for alramclock (store its wkaeup tick)
+    int64_t wakeup_tick;
+
+    /*-----------------------------------project1*/
+
+
+    /* project2---------------------------------*/
+
+    // for checking child exit status
+    int exit_status;
+
+    //for system call
+    struct semaphore wait_sema;
+    struct semaphore fork_sema;
+    struct semaphore free_sema;
+    struct intr_frame pif; /* remember caller's intr_frame (when fork child)*/
+    struct list child_list;
+	struct list_elem child_elem;
+
+    // for file
+    struct file **fd_table; //쓰레드 create 에서 할당
+    int fd_idx; //fd 테이블의 open index
+
+    struct file *running; // deny exec write
+    // int stdin_count;
+    // int stdout_count;
+    /* ----------------------------------project2*/
+
+
+// #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
+#ifdef USERPROG
 #endif
 #ifdef VM
 	/* Table for whole virtual memory owned by thread. */
@@ -154,6 +186,7 @@ void do_iret (struct intr_frame *tf);
 
 #endif /* threads/thread.h */
 
+/* ------------------project 1----------------------------------*/
 void thread_sleep(int64_t ticks);
 void thread_awake(int64_t ticks);
 
@@ -168,3 +201,10 @@ bool thread_compare_donate_priority(const struct list_elem *higher, const struct
 void donate_priority(void);
 void remove_with_lock(struct lock *lock);
 void refresh_priority(void);
+/* ------------------project 1----------------------------------*/
+
+
+/* ------------------project 2----------------------------------*/
+#define FDT_PAGES 3
+#define FDCOUNT_LIMIT FDT_PAGES *(1 << 9)	// Limit fd_idx
+/* ------------------project 2----------------------------------*/
