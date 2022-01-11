@@ -18,6 +18,7 @@
 #include "threads/mmu.h"
 #include "threads/vaddr.h"
 #include "intrinsic.h"
+#include "userprog/syscall.h"
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -85,13 +86,13 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 
 	/* Clone current thread to new thread.*/
     // 차일드 쓰레드 생성, tid 저장
-    tid_t tid = thread_create (name, cur->priority, __do_fork, cur);
+    tid_t tid = thread_create (name, cur->priority, __do_fork, cur); // cur->pif 에 f 가 저장되어있으므로, cur를 넘겨줘야댐.
     if (tid == TID_ERROR){
         return TID_ERROR;
     }
 
 	struct thread *child = thread_child(tid);
-	sema_down(&child->fork_sema);
+	sema_down(&child->fork_sema); //
 	if (child->exit_status == -1)
 		return TID_ERROR;
 
@@ -144,10 +145,10 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) { //하다 말음
 }
 #endif
 
-struct map_elem{
-    uintptr_t key;
-    uintptr_t value;
-};
+// struct map_elem{
+//     uintptr_t key;
+//     uintptr_t value;
+// };
 
 /* A thread function that copies parent's execution context.
  * Hint) parent->tf does not hold the userland context of the process.
@@ -190,9 +191,9 @@ __do_fork (void *aux) {
 	if (parent->fd_idx >= FDCOUNT_LIMIT)
         goto error;
 
-    const int map_len = 10;
-    struct map_elem map[10];
-    int dup_count = 0;
+    // const int map_len = 10;
+    // struct map_elem map[10];
+    // int dup_count = 0;
 
     for (int i = 2; i < FDCOUNT_LIMIT; i++){
         struct file *file = parent->fd_table[i];
@@ -214,11 +215,11 @@ __do_fork (void *aux) {
             new_file = file;
 
         current -> fd_table[i] = new_file;
-        if (dup_count < map_len){
-            map[dup_count].key = file;
-            map[dup_count].value = new_file;
-            dup_count++;
-        }
+        // if (dup_count < map_len){
+        //     map[dup_count].key = file;
+        //     map[dup_count].value = new_file;
+        //     dup_count++;
+        // }
         // }
     }
     current->fd_idx = parent->fd_idx;
@@ -246,7 +247,7 @@ process_exec (void *f_name) {
 	_if.ds = _if.es = _if.ss = SEL_UDSEG;
 	_if.cs = SEL_UCSEG;
 	_if.eflags = FLAG_IF | FLAG_MBS;
-
+    //created by CPU
 	/* We first kill the current context */
 	process_cleanup ();
 
@@ -263,10 +264,13 @@ process_exec (void *f_name) {
     }
 
 	/* And then load the binary */
+    lock_acquire(&filesys_lock);
 	success = load (file_name, &_if);
+    lock_release(&filesys_lock);
 
 	/* If load failed, quit. */
 	if (!success){
+        // palloc_free_page (file_name);
 		return -1;
     }
 
@@ -288,7 +292,7 @@ void argument_stack_for_user(char ** argv, int argc, struct intr_frame *if_){
         int N = strlen(argv[i]) + 1; // for sentinel as '\0'
         if_->rsp -= N;
         memcpy(if_->rsp, argv[i], N);
-        argv[i] = (char *)if_->rsp; // for address of first letter of argv which is if_->rsp
+        argv[i] = (char *)if_->rsp; // for address of first letter of argv which will be pointed by if_->rsp
     }
 
 

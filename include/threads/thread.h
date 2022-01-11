@@ -130,8 +130,8 @@ struct thread {
     int fd_idx; //fd 테이블의 open index
 
     struct file *running; // deny exec write
-    int stdin_count;
-    int stdout_count;
+    // int stdin_count;
+    // int stdout_count;
     /* ----------------------------------project2*/
 
 

@@ -39,7 +39,7 @@ void seek(int, unsigned);
 unsigned tell(int);
 void close(int);
 
-int dup2(int, int); //project2 - extra work
+// int dup2(int, int); //project2 - extra work
 
 int process_add_file (struct file*);
 struct file* process_get_file (int);
@@ -149,9 +149,9 @@ syscall_handler (struct intr_frame *f UNUSED) {
             break;
 
         /* Extra for Project 2 */
-        case SYS_DUP2:
-            f->R.rax = dup2(f->R.rdi, f->R.rsi);
-            break;
+        // case SYS_DUP2:
+        //     f->R.rax = dup2(f->R.rdi, f->R.rsi);
+        //     break;
 
 
         /* Project 3 and optionally project 4. */
@@ -243,12 +243,12 @@ int read(int fd, void *buffer, unsigned size){
 	if (!file_obj) return -1;
 
 	if (file_obj == STDIN) {
-		if (!cur->stdin_count) {
-			NOT_REACHED(); //? 잘 모르겠다.
-            // process_close_file(fd);
-            // return -1;
-		}
-        else{
+		// if (!cur->stdin_count) {
+		// 	NOT_REACHED(); //? 잘 모르겠다.
+        //     // process_close_file(fd);
+        //     // return -1;
+		// }
+        // else{
             int i;
             unsigned char *buf = buffer;
 
@@ -261,12 +261,13 @@ int read(int fd, void *buffer, unsigned size){
                     break;
             }
             return i;
-        }
+        // }
 	}
-	else if (file_obj == STDOUT) return -1;
+	// else
+    if (file_obj == STDOUT) return -1;
 
     /* fild_read -> Returns the number of bytes actually read*/
-    else{
+    else{ //다른 파일에서 읽어올 때
         lock_acquire (&filesys_lock);
         read_bytes = file_read(file_obj, buffer, size);
         lock_release (&filesys_lock);
@@ -283,19 +284,19 @@ int write(int fd, const void *buffer, unsigned size){
     if (file_obj == STDIN) return -1;
 
 	if (file_obj == STDOUT) {
-		if (!cur->stdout_count){
-			NOT_REACHED();
-			process_close_file(fd);
-			return -1;
-		}
-        else{
+		// if (!cur->stdout_count){
+		// 	process_close_file(fd);
+		// 	NOT_REACHED();
+		// 	return -1;
+		// }
+        // else{
             putbuf(buffer, size);
             return size;
-        }
+        // }
 	}
 
 
-    // fild_obj > 2
+    // fild_obj > 2 다른 파일에 쓸때
 	lock_acquire (&filesys_lock);
 	written_bytes = file_write(file_obj, buffer, size);
 	lock_release (&filesys_lock);
@@ -303,14 +304,14 @@ int write(int fd, const void *buffer, unsigned size){
 	return written_bytes;
 }
 
-void seek(int fd, unsigned position){
+void seek(int fd, unsigned position){ //cursor 를 position 으로 이동.
     struct file *file_obj = process_get_file(fd);
 
 	if (file_obj > 2)
 	    file_obj->pos = position;
 }
 
-unsigned tell(int fd){
+unsigned tell(int fd){ //cursor의 위치를 return
     struct file *file_obj = process_get_file(fd);
 
 	if (file_obj > 2)
@@ -323,49 +324,54 @@ void close(int fd){
 
 	struct thread *cur = thread_current ();
 
-	if (file_obj == STDIN || fd == 0)
-		cur->stdin_count --;
+    /* for dup2 */
 
-	else if (file_obj == STDOUT || fd == 1)
-		cur->stdout_count --;
+	// if (file_obj == STDIN || fd == 0)
+	// 	cur->stdin_count --;
 
-	process_close_file(fd);
+	// else if (file_obj == STDOUT || fd == 1)
+	// 	cur->stdout_count --;
+
+    /* for dup2 */
+
 	if (fd <= 1 || file_obj <= 2) return;
 
+	process_close_file(fd);
 
-	if (!file_obj->dup_count)
+
+	// if (!file_obj->dup_count)
 		file_close(file_obj);
-	else
-		file_obj->dup_count --;
+	// else
+		// file_obj->dup_count --;
 }
 
 //extra
 
-int dup2(int old_fd, int new_fd){
-    struct file *old_file = process_get_file(old_fd);
-    if (!old_fd) return -1;
+// int dup2(int old_fd, int new_fd){
+//     struct file *old_file = process_get_file(old_fd);
+//     if (!old_fd) return -1;
 
-    struct file *new_file = process_get_file(new_fd);
-    if (old_fd == new_fd) return new_fd;
+//     struct file *new_file = process_get_file(new_fd);
+//     if (old_fd == new_fd) return new_fd;
 
-    struct thread *cur = thread_current();
-    struct file **fdt = cur->fd_table;
+//     struct thread *cur = thread_current();
+//     struct file **fdt = cur->fd_table;
 
-    if (old_file == 1){
-        cur->stdin_count++;
-    }
+//     if (old_file == 1){
+//         cur->stdin_count++;
+//     }
 
-    else if (old_file == 2){
-        cur->stdout_count++;
-    }
+//     else if (old_file == 2){
+//         cur->stdout_count++;
+//     }
 
-    else{
-        old_file->dup_count++;
-    }
-    close(new_fd);
-    fdt[new_fd] = old_file;
-    return new_fd;
-}
+//     else{
+//         old_file->dup_count++;
+//     }
+//     close(new_fd);
+//     fdt[new_fd] = old_file;
+//     return new_fd;
+// }
 
 int process_add_file (struct file *f){
 	struct thread *cur = thread_current();

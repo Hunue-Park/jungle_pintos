@@ -235,8 +235,8 @@ tid_t thread_create (const char *name, int priority, thread_func *function, void
 
     t->fd_table[0] = 1;
 	t->fd_table[1] = 2;
-	t->stdin_count = 1;
-	t->stdout_count = 1;
+	// t->stdin_count = 1;
+	// t->stdout_count = 1;
 
     ///////////////
 
@@ -366,7 +366,7 @@ void thread_set_priority (int new_priority) {
 
 	thread_current ()->init_priority = new_priority;
 	refresh_priority();
-    
+
     intr_set_level(old_level);
 	preemption();
 }

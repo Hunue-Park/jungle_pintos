@@ -23,7 +23,7 @@ file_open (struct inode *inode) {
 		file->deny_write = false;
 
         /* project 2 - extra */
-        file->dup_count = 0;
+        // file->dup_count = 0;
 
 		return file;
 	} else {
@@ -50,7 +50,7 @@ file_duplicate (struct file *file) {
 		if (file->deny_write)
 			file_deny_write (nfile);
         //project 2 extra
-        nfile->dup_count = file->dup_count;
+        // nfile->dup_count = file->dup_count;
 	}
 	return nfile;
 }
