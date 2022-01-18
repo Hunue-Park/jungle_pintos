@@ -34,7 +34,9 @@ struct hash_elem {
  * the structure that HASH_ELEM is embedded inside.  Supply the
  * name of the outer structure STRUCT and the member name MEMBER
  * of the hash element.  See the big comment at the top of the
- * file for an example. */
+ * file for an example. 
+ * hash_entry: 해시 테이블 내에 있는 엔트리 페이지를 반환한다.
+ * */
 #define hash_entry(HASH_ELEM, STRUCT, MEMBER)                   \
 	((STRUCT *) ((uint8_t *) &(HASH_ELEM)->list_elem        \
 		- offsetof (STRUCT, MEMBER.list_elem)))
