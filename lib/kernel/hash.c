@@ -90,10 +90,14 @@ hash_destroy (struct hash *h, hash_action_func *destructor) {
    without inserting NEW. */
 struct hash_elem *
 hash_insert (struct hash *h, struct hash_elem *new) {
+	/* new의 해시값으로 buckets의 idx를 구하고 해당 idx의 bucket을 리턴한다. */
 	struct list *bucket = find_bucket (h, new);
-	struct hash_elem *old = find_elem (h, bucket, new);
+	/* bucket 안에 new와 같은 해시값을 가지고 있는 elem이 있다면 그 elem을, 없다면 NULL을 리턴한다. */
+	struct hash_elem *old = find_elem (h, bucket, new);  
+	
 
-	if (old == NULL)
+	/* 같은 va를 가진 elem이 없으면 해당 bucket list 맨 앞에 elem을 삽입 */
+	if (old == NULL)  
 		insert_elem (h, bucket, new);
 
 	rehash (h);
@@ -291,10 +295,10 @@ find_elem (struct hash *h, struct list *bucket, struct hash_elem *e) {
 
 	for (i = list_begin (bucket); i != list_end (bucket); i = list_next (i)) {
 		struct hash_elem *hi = list_elem_to_hash_elem (i);
-		if (!h->less (hi, e, h->aux) && !h->less (e, hi, h->aux))
-			return hi;
+		if (!h->less (hi, e, h->aux) && !h->less (e, hi, h->aux))  // hi가 e보다 작지도 크지도 않으면
+			return hi;  // hi 리턴
 	}
-	return NULL;
+	return NULL;  // 못 찾으면 NULL 리턴
 }
 
 /* Returns X with its lowest-order bit set to 1 turned off. */
@@ -334,11 +338,14 @@ rehash (struct hash *h) {
 	   We want one bucket for about every BEST_ELEMS_PER_BUCKET.
 	   We must have at least four buckets, and the number of
 	   buckets must be a power of 2. */
+	// 현재 elem_cnt에 맞는 이상적인 bucket의 수를 구한다. 
+	// 한 bucket에 elem이 2개씩 들어가는 것이 이상적이다.
 	new_bucket_cnt = h->elem_cnt / BEST_ELEMS_PER_BUCKET;
 	if (new_bucket_cnt < 4)
 		new_bucket_cnt = 4;
 	while (!is_power_of_2 (new_bucket_cnt))
-		new_bucket_cnt = turn_off_least_1bit (new_bucket_cnt);
+		new_bucket_cnt = turn_off_least_1bit (new_bucket_cnt);  
+		// 2의 배수면 0이 나온다. 현재 elem_cnt에 맞는 이상적인 bucket의 수
 
 	/* Don't do anything if the bucket count wouldn't change. */
 	if (new_bucket_cnt == old_bucket_cnt)
@@ -355,6 +362,7 @@ rehash (struct hash *h) {
 	for (i = 0; i < new_bucket_cnt; i++)
 		list_init (&new_buckets[i]);
 
+	// 새 new_bucket으로 교체하고 내용물을 복사한다.
 	/* Install new bucket info. */
 	h->buckets = new_buckets;
 	h->bucket_cnt = new_bucket_cnt;

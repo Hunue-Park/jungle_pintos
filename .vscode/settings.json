@@ -1,0 +1,13 @@
+{
+    "files.associations": {
+        "memory_resource": "cpp",
+        "array": "cpp",
+        "istream": "cpp",
+        "ostream": "cpp",
+        "tuple": "cpp",
+        "type_traits": "cpp",
+        "utility": "cpp",
+        "disk.h": "c"
+    },
+    "C_Cpp.errorSquiggles": "Disabled"
+}

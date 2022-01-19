@@ -30,6 +30,10 @@ enum vm_type {
 #ifdef EFILESYS
 #include "filesys/page_cache.h"
 #endif
+/*----------------3. virtual memory : memory management----------------------*/
+#include "include/lib/kernel/hash.h"
+#include "include/threads/vaddr.h"
+/*----------------3. virtual memory : memory management----------------------*/
 
 struct page_operations;
 struct thread;
@@ -46,6 +50,9 @@ struct page {
 	struct frame *frame;   /* Back reference for frame */
 
 	/* Your implementation */
+	struct hash_elem hash_elem; // 해당 페이지가 속해 있는 해시 테이블에 연결시켜주는 해시 테이블 요소
+	bool writable; // 'vm_try_handler' needs to find out if the page is writable or read-only
+	int page_cnt;  // file-mapped page만을 위한 멤버
 
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
@@ -63,6 +70,7 @@ struct page {
 struct frame {
 	void *kva;
 	struct page *page;
+	struct list_elem frame_elem;
 };
 
 /* The function table for page operations.
@@ -81,11 +89,22 @@ struct page_operations {
 #define destroy(page) \
 	if ((page)->operations->destroy) (page)->operations->destroy (page)
 
+/* --------------------3. virtual memory : memory management-------------- */
 /* Representation of current process's memory space.
  * We don't want to force you to obey any specific design for this struct.
  * All designs up to you for this. */
 struct supplemental_page_table {
+	struct hash pages;
 };
+
+/* --------------------3. virtual memory : memory management-------------- */
+unsigned hash_func(const struct hash_elem *e, void *aux UNUSED);
+bool less_func(const struct hash_elem *a, const struct hash_elem *b, void *aux);
+bool insert_page(struct hash *pages, struct page *p);
+bool delete_page(struct hash *pages, struct page *p);
+void spt_destructor(struct hash_elem *e, void* aux);
+struct list frame_table;
+/* --------------------3. virtual memory : memory management-------------- */
 
 #include "threads/thread.h"
 void supplemental_page_table_init (struct supplemental_page_table *spt);
@@ -110,3 +129,4 @@ bool vm_claim_page (void *va);
 enum vm_type page_get_type (struct page *page);
 
 #endif  /* VM_VM_H */
+

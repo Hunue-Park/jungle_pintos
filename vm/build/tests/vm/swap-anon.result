@@ -1,0 +1,15 @@
+FAIL
+Kernel panic in run: PANIC at ../../threads/mmu.c:242 in pml4_set_page(): assertion `is_kernel_vaddr(kpage)' failed.
+Call stack: 0x8004217dcf 0x800420d037 0x800421c0dc 0x800422119e 0x800422113c 0x800422102e 0x800421cb01 0x8004208ee0 0x80042092fe 0x400cac 0x400cf5
+Translation of call stack:
+0x0000008004217dcf: debug_panic (lib/kernel/debug.c:32)
+0x000000800420d037: pml4_set_page (threads/mmu.c:242)
+0x000000800421c0dc: install_page (userprog/process.c:702 (discriminator 1))
+0x000000800422119e: vm_do_claim_page (vm/vm.c:286)
+0x000000800422113c: vm_claim_page (vm/vm.c:274)
+0x000000800422102e: vm_try_handle_fault (vm/vm.c:241)
+0x000000800421cb01: page_fault (userprog/exception.c:145)
+0x0000008004208ee0: intr_handler (threads/interrupt.c:352)
+0x00000080042092fe: intr_entry (threads/intr-stubs.o:?)
+0x0000000000400cac: (unknown)
+0x0000000000400cf5: (unknown)

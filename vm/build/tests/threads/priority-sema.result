@@ -1,0 +1,12 @@
+FAIL
+Kernel panic in run: PANIC at ../../lib/kernel/list.c:142 in list_head(): assertion `list != NULL' failed.
+Call stack: 0x8004217dcf 0x8004218239 0x800421a814 0x8004221406 0x800421bb10 0x800421baaa 0x8004207384 0x8004207610
+Translation of call stack:
+0x0000008004217dcf: debug_panic (lib/kernel/debug.c:32)
+0x0000008004218239: list_head (lib/kernel/list.c:143)
+0x000000800421a814: hash_first (lib/kernel/hash.c:195)
+0x0000008004221406: supplemental_page_table_kill (vm/vm.c:353)
+0x000000800421bb10: process_cleanup (userprog/process.c:339)
+0x000000800421baaa: process_exit (userprog/process.c:322)
+0x0000008004207384: thread_exit (threads/thread.c:354)
+0x0000008004207610: init_thread (threads/thread.c:468)

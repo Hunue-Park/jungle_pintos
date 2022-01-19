@@ -45,13 +45,15 @@ uninit_new (struct page *page, void *va, vm_initializer *init,
 /* Initalize the page on first fault */
 static bool
 uninit_initialize (struct page *page, void *kva) {
-	struct uninit_page *uninit = &page->uninit;
+	struct uninit_page *uninit = &page->uninit; // 페이지 구조체 내 UNION 내 uninit struct.
 
 	/* Fetch first, page_initialize may overwrite the values */
 	vm_initializer *init = uninit->init;
 	void *aux = uninit->aux;
 
-	/* TODO: You may need to fix this function. */
+	/* 해당 페이지의 타입에 맞도록 페이지를 초기화한다. */
+	/* 만약 해당 페이지의 segment가 load되지 않은 상태면 lazy load 해준다. 
+     init이 lazy_load_segment일 때! */
 	return uninit->page_initializer (page, uninit->type, kva) &&
 		(init ? init (page, aux) : true);
 }

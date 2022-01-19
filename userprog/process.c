@@ -415,7 +415,7 @@ struct ELF64_PHDR {
 #define ELF ELF64_hdr
 #define Phdr ELF64_PHDR
 
-static bool setup_stack (struct intr_frame *if_);
+bool setup_stack (struct intr_frame *if_);
 static bool validate_segment (const struct Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		uint32_t read_bytes, uint32_t zero_bytes,
@@ -609,26 +609,35 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 	ASSERT (ofs % PGSIZE == 0);
 
 	file_seek (file, ofs);
+	/* file에 있는 데이터를 페이지 단위로 물리 메모리(커널 가상 주소 공간)에 올리고
+	   유저 가상 공간 upage에 매핑한다. */
 	while (read_bytes > 0 || zero_bytes > 0) {
 		/* Do calculate how to fill this page.
 		 * We will read PAGE_READ_BYTES bytes from FILE
 		 * and zero the final PAGE_ZERO_BYTES bytes. */
+		/* 1 Page보다 같거나 작은 메모리를 한 단위로 해서 읽어 온다.
+		   페이지보다 작은 메모리를 읽어올때 (페이지 - 메모리) 공간을 0으로 만들 것이다.  */
 		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
 		/* Get a page of memory. */
+		/* 물리 메모리의 유저 풀에서 한 페이지를 프로세스의 커널 가상 주소 공간으로 받아온다. 
+		   kpage는 해당 물리 페이지의 프로세스 커널 가상 주소이다. */
 		uint8_t *kpage = palloc_get_page (PAL_USER);
 		if (kpage == NULL)
 			return false;
 
 		/* Load this page. */
+		/* kpage주소 공간에 file을 page_read_bytes만큼 읽어온다. */
 		if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes) {
+			/* 잘못 읽어 왔으면 페이지 반환 */
 			palloc_free_page (kpage);
 			return false;
 		}
 		memset (kpage + page_read_bytes, 0, page_zero_bytes);
 
 		/* Add the page to the process's address space. */
+		/* upage 주소와 kpage 주소를 매핑해서 pml4에 그 정보를 저장한다. */
 		if (!install_page (upage, kpage, writable)) {
 			printf("fail\n");
 			palloc_free_page (kpage);
@@ -683,11 +692,42 @@ install_page (void *upage, void *kpage, bool writable) {
  * If you want to implement the function for only project 2, implement it on the
  * upper block. */
 
-static bool
+bool
+install_page (void *upage, void *kpage, bool writable) {
+	struct thread *t = thread_current ();
+
+	/* Verify that there's not already a page at that virtual
+	 * address, then map our page there. */
+	return (pml4_get_page (t->pml4, upage) == NULL
+			&& pml4_set_page (t->pml4, upage, kpage, writable));
+}
+
+
+/* 가상 페이지와 관련된 파일의 offset부터 page_read_bytes까지의 데이터를 읽어와
+   페이지와 매핑된 물리 메모리 page->frame->kva에 쓴다.
+   즉, 페이지에 있는 파일 정보대로 물리 메모리에 LOAD한다. */
+bool
 lazy_load_segment (struct page *page, void *aux) {
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
+	struct file *file = ((struct container*)aux)->file;
+	off_t offset = ((struct container*)aux)->offset;
+	size_t page_read_bytes = ((struct container*)aux)->page_read_bytes;
+	size_t page_zero_bytes = PGSIZE - page_read_bytes;
+
+	file_seek(file, offset);  // file의 오프셋을 offset으로 바꾼다. 이제 offset부터 읽기 시작한다.
+
+	/* 페이지에 매핑된 물리 메모리(frame, 커널 가상 주소)에 파일의 데이터를 읽어온다. */
+	/* 제대로 못 읽어오면 페이지를 FREE시키고 FALSE 리턴 */
+	if (file_read(file, page->frame->kva, page_read_bytes) != (int)page_read_bytes){
+		palloc_free_page(page->frame->kva);
+		return false;
+	}
+	/* 만약 1페이지 못 되게 받아왔다면 남는 데이터를 0으로 초기화한다. */
+	memset(page->frame->kva + page_read_bytes, 0, page_zero_bytes); 
+
+	return true;	
 }
 
 /* Loads a segment starting at offset OFS in FILE at address
@@ -711,29 +751,42 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 	ASSERT (pg_ofs (upage) == 0);
 	ASSERT (ofs % PGSIZE == 0);
 
+	/* upage 주소부터 1페이지 단위씩 UNINIT 페이지를 만들어 프로세스의 spt에 넣는다(vm_alloc_page_with_initializer).
+	   이 때 각 페이지의 타입에 맞게 initializer도 맞춰준다. */
 	while (read_bytes > 0 || zero_bytes > 0) {
 		/* Do calculate how to fill this page.
 		 * We will read PAGE_READ_BYTES bytes from FILE
 		 * and zero the final PAGE_ZERO_BYTES bytes. */
+		/* 1 Page보다 같거나 작은 메모리를 한 단위로 해서 읽어 온다.
+		   페이지보다 작은 메모리를 읽어올때 (페이지 - 메모리) 공간을 0으로 만들 것이다. */
 		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		void *aux = NULL;
+		/* 새 UNINIT 페이지를 만들어서 현재 프로세스의 spt에 넣는다. 
+		   페이지에 해당하는 파일의 정보들을 container 구조체에 담아서 AUX로 넘겨준다.
+		   타입에 맞게 initializer를 설정해준다.  */
+		struct container *container = (struct container *)malloc(sizeof(struct container));
+		container->file = file;
+		container->page_read_bytes = page_read_bytes;
+		container->offset = ofs;
+
 		if (!vm_alloc_page_with_initializer (VM_ANON, upage,
-					writable, lazy_load_segment, aux))
+					writable, lazy_load_segment, container))
 			return false;
+		// page fault가 호출되면 페이지가 타입별로 초기화되고 lazy_load_segment()가 실행된다. 
 
 		/* Advance. */
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
 		upage += PGSIZE;
+		ofs += page_read_bytes;
 	}
 	return true;
 }
 
 /* Create a PAGE of stack at the USER_STACK. Return true on success. */
-static bool
+bool
 setup_stack (struct intr_frame *if_) {
 	bool success = false;
 	void *stack_bottom = (void *) (((uint8_t *) USER_STACK) - PGSIZE);
@@ -742,7 +795,15 @@ setup_stack (struct intr_frame *if_) {
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
+	/* ANON 페이지로 만들 UNINIT 페이지를 만든다. */
+	if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1)) {
+		success = vm_claim_page(stack_bottom);
 
+		if (success){
+			if_->rsp = USER_STACK;
+			thread_current()->stack_bottom = stack_bottom;
+		}
+	}
 	return success;
 }
 #endif /* VM */
