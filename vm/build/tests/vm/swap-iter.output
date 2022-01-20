@@ -4,7 +4,7 @@ Kernel command line: -q -f put swap-iter put large.txt run swap-iter
 Pintos booting with: 
 	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
 	ext_mem: 0x100000 ~ 0x9e0000 (Usable: 9,088 kB)
-Calibrating timer...  104,857,600 loops/s.
+Calibrating timer...  157,081,600 loops/s.
 hd0:0: detected 329 sector (164 kB) disk, model "QEMU HARDDISK", serial "QM00001"
 hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
 hd1:0: detected 7,932 sector (3 MB) disk, model "QEMU HARDDISK", serial "QM00003"
@@ -19,17 +19,17 @@ Executing 'swap-iter':
 (swap-iter) write sparsely over page 512
 (swap-iter) write sparsely over page 1024
 Kernel PANIC at ../../threads/mmu.c:242 in pml4_set_page(): assertion `is_kernel_vaddr(kpage)' failed.
-Call stack: 0x8004217dcf 0x800420d037 0x800421c0dc 0x800422119e 0x800422113c 0x800422102e 0x800421cb01 0x8004208ee0 0x80042092fe 0x400e2e 0x400e77 0 0xccccccccccccccccInterrupt 0x0d (#GP General Protection Exception) at rip=8004214e09
+Call stack: 0x8004217dcf 0x800420d037 0x800421c0dc 0x80042212fa 0x8004221298 0x8004221139 0x800421cb01 0x8004208ee0 0x80042092fe 0x400e2e 0x400e77 0 0xccccccccccccccccInterrupt 0x0d (#GP General Protection Exception) at rip=8004214e09
  cr2=0000000000ca4fa0 error=               0
 rax cccccccccccccccc rbx 0000000000000000 rcx 00000080040b8000 rdx 00000000000003d4
-rsp 0000008004240d10 rbp 0000008004240d20 rsi 000000000000870f rdi 0000000000000000
-rip 0000008004214e09 r8 0000008004240c28  r9 000000800421b248 r10 0000000000000000
+rsp 0000008004240d00 rbp 0000008004240d10 rsi 000000000000870f rdi 0000000000000000
+rip 0000008004214e09 r8 0000008004240c18  r9 000000800421b248 r10 0000000000000000
 r11 0000000000000206 r12 0000008004240000 r13 000000800422add8 r14 0000008004240ef0
 r15 000000800420a0f9 rflags 00000086
 es: 0010 ds: 0010 cs: 0008 ss: 0010
 Kernel PANIC recursion at ../../userprog/exception.c:97 in kill().
-Timer: 336 ticks
-Thread: 30 idle ticks, 261 kernel ticks, 45 user ticks
+Timer: 282 ticks
+Thread: 30 idle ticks, 207 kernel ticks, 45 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 116 reads, 15902 writes
 hd1:0: 7932 reads, 0 writes

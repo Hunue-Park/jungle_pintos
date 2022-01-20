@@ -795,7 +795,19 @@ setup_stack (struct intr_frame *if_) {
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
-	/* ANON 페이지로 만들 UNINIT 페이지를 만든다. */
+	/* stack_bottom, 즉 사용자 가상 공간의 STACK 시작 주소에 
+	   ANON 페이지로 변경할 UNINIT 페이지를 만든다. 페이지를 만드는 데 성공했다면, 
+	   프로세스의 if_ 중 RSP의 값을 유저 스택의 시작 부분에 놓고 
+	   stack_bottom의 값을 페이지의 끝에 놓는다.
+	   
+       ------------------------- <---- USER_STACK == if_->rsp
+	   |                       | 
+	   |       NEW PAGE        |
+	   |                       |
+	   |                       |
+	   ------------------------- <---- stack_bottom
+	   
+	   */
 	if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1)) {
 		success = vm_claim_page(stack_bottom);
 

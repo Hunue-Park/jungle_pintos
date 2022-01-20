@@ -28,7 +28,6 @@ child-sort: exit(-1)
 (page-merge-par) sort chunk 5
 child-sort: exit(-1)
 (page-merge-par) sort chunk 6
-Page fault at 0x18: not present error writing page in kernel context.
 child-sort: exit(-1)
 (page-merge-par) sort chunk 7
 child-sort: exit(-1)
@@ -37,13 +36,13 @@ child-sort: exit(-1)
 page-merge-par: exit(1)
 child-sort: exit(-1)
 Execution of 'page-merge-par' complete.
-Timer: 197 ticks
-Thread: 30 idle ticks, 50 kernel ticks, 117 user ticks
+Timer: 961 ticks
+Thread: 30 idle ticks, 46 kernel ticks, 885 user ticks
 hd0:0: 0 reads, 0 writes
-hd0:1: 430 reads, 4666 writes
+hd0:1: 439 reads, 4666 writes
 hd1:0: 218 reads, 0 writes
 hd1:1: 0 reads, 0 writes
-Console: 1609 characters output
+Console: 1539 characters output
 Keyboard: 0 keys pressed
-Exception: 1 page faults
+Exception: 0 page faults
 Powering off...

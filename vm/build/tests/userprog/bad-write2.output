@@ -17,8 +17,8 @@ Executing 'bad-write2':
 Page fault at 0x8004000000: rights violation error writing page in user context.
 bad-write2: exit(-1)
 Execution of 'bad-write2' complete.
-Timer: 60 ticks
-Thread: 30 idle ticks, 27 kernel ticks, 3 user ticks
+Timer: 61 ticks
+Thread: 30 idle ticks, 29 kernel ticks, 2 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 80 reads, 232 writes
 hd1:0: 102 reads, 0 writes

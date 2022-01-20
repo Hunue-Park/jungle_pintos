@@ -110,22 +110,22 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 }
 
 /* Insert PAGE into spt with validation. */
-bool
-spt_insert_page (struct supplemental_page_table *spt UNUSED, struct page *page UNUSED) {
-	int succ = false;
+// bool
+// spt_insert_page (struct supplemental_page_table *spt UNUSED, struct page *page UNUSED) {
+// 	int succ = false;
 
-	/* 반환값이 NULL이면 삽입 성공 */
-	if (!hash_insert(&spt->pages, &page->hash_elem))
-		succ = true;
+// 	/* 반환값이 NULL이면 삽입 성공 */
+// 	if (!hash_insert(&spt->pages, &page->hash_elem))
+// 		succ = true;
 
-	return succ;
-}
-
-// bool spt_insert_page (struct supplemental_page_table *spt UNUSED, struct page *page UNUSED) {
-// 	// int succ = false;
-// 	/* TODO: Fill this function. */
-// 	return insert_page(&spt->pages, page);
+// 	return succ;
 // }
+
+bool spt_insert_page (struct supplemental_page_table *spt UNUSED, struct page *page UNUSED) {
+	// int succ = false;
+	/* TODO: Fill this function. */
+	return insert_page(&spt->pages, page);
+}
 
 bool insert_page(struct hash *pages, struct page *p) {
 	/* 반환값이 NULL이면 삽입 성공! */
@@ -198,7 +198,10 @@ vm_get_frame (void) {
 	/* TODO: Fill this function. */
 	struct frame *frame = (struct frame*)malloc(sizeof(struct frame));
 	
-	frame->kva = palloc_get_page(PAL_USER);
+	frame->kva = palloc_get_page(PAL_USER); /* USER POOL에서 커널 가상 주소 공간으로 1page 할당 */
+	
+	/* if 프레임이 꽉 차서 할당받을 수 없다면 페이지 교체 실시
+	   else 성공했다면 frame 구조체 커널 주소 멤버에 위에서 할당받은 메모리 커널 주소 넣기 */
     if(frame->kva == NULL)
     {
         // frame = vm_evict_frame();
@@ -231,18 +234,22 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 		bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
 	struct supplemental_page_table *spt UNUSED = &thread_current ()->spt;
 	struct page *page = NULL;
-	/* TODO: Validate the fault */
-	/* TODO: Your code goes here */
-		if (is_kernel_vaddr(addr)) {
+
+	if (is_kernel_vaddr(addr)) { // 유저 공간 페이지 폴트여야 한다.
         return false;
 	}
-    // void *rsp_stack = is_kernel_vaddr(f->rsp) ? thread_current()->rsp_stack : f->rsp;
+	/* 1. 스택 포인터를 어떻게 가져올 것인지 */
+    void *rsp_stack = is_kernel_vaddr(f->rsp) ? thread_current()->rsp_stack : f->rsp;
+
     if (not_present){
         if (!vm_claim_page(addr)) {
-            // if (rsp_stack - 8 <= addr && USER_STACK - 0x100000 <= addr && addr <= USER_STACK) {
-            //     vm_stack_growth(thread_current()->stack_bottom - PGSIZE);
-            //     return true;
-            // }
+			/* 페이지의 Present bit이 0이면 -> 메모리 상에 존재하지 않으면 
+			메모리에 프레임을 올리고 프레임과 페이지를 매핑시켜준다. */
+            if (rsp_stack - 8 <= addr && USER_STACK - 0x100000 <= addr && addr <= USER_STACK) {
+				/* Page fault 발생 주소가 유저 스택 내에 있고, 스택 포인터보다 8바이트 밑에 있지 않으면 */
+                vm_stack_growth(thread_current()->stack_bottom - PGSIZE);
+                return true;
+            }
             return false;
         }
         else
@@ -282,22 +289,13 @@ vm_do_claim_page (struct page *page) {
 	frame->page = page;
 	page->frame = frame;
 
-	/* TODO: Insert page table entry to map page's VA to frame's PA. */
+	/* 프로세스의 pml4에 유저 메모리 page->va에서 
+	   커널 주소 공간에 있는 프레임의 주소 frame->kva로 매핑한다. 
+	   이제 pml4_get_page(plm4, page->va)를 통해 page가 매핑된 커널 가상 주소를 알 수 있다. */
 	if (install_page(page->va, frame->kva, page->writable)) {	// 유저페이지가 이미 매핑되었거나 메모리 할당 실패 시 false
         return swap_in(page, frame->kva);
     }
     return false;
-
-	// /* TODO: Insert page table entry to map page's VA to frame's PA. */
-	// struct thread *cur = thread_current();
-	// bool writable = page->writable;
-
-	// /* 프로세스의 pml4에 유저 메모리 page->va에서 
-	//    커널 주소 공간에 있는 프레임의 주소 frame->kva로 매핑한다. 
-	//    이제 pml4_get_page(plm4, page->va)를 통해 page가 매핑된 커널 가상 주소를 알 수 있다. */
-	// pml4_set_page(cur->pml4, page->va, frame->kva, writable);
-
-	// return swap_in (page, frame->kva);
 }
 
 /* Initialize new supplemental page table */
@@ -310,8 +308,11 @@ supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 bool
 supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 	struct supplemental_page_table *src UNUSED) {
+
 	struct hash_iterator i;
-    hash_first (&i, &src->pages);
+
+	/* 1. SRC의 해시 테이블의 각 bucket 내 elem들을 모두 복사한다. */
+	hash_first (&i, &src->pages);
     while (hash_next (&i)) {	// src의 각각의 페이지를 반복문을 통해 복사
         struct page *parent_page = hash_entry (hash_cur (&i), struct page, hash_elem);   // 현재 해시 테이블의 element 리턴
         enum vm_type type = page_get_type(parent_page);		// 부모 페이지의 type
@@ -320,21 +321,26 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
         vm_initializer *init = parent_page->uninit.init;	// 부모의 초기화되지 않은 페이지들 할당 위해 
         void* aux = parent_page->uninit.aux;
 
-        if (parent_page->uninit.type & VM_MARKER_0) {			// 부모 페이지가 할당되어 있다면????
+		// 부모 페이지가 STACK이라면 setup_stack()
+        if (parent_page->uninit.type & VM_MARKER_0) { 
             setup_stack(&thread_current()->tf);
         }
-        else if(parent_page->operations->type == VM_UNINIT) {	// 부모 타입이 uninit인 경우
+		// 부모 타입이 uninit인 경우
+        else if(parent_page->operations->type == VM_UNINIT) { 
             if(!vm_alloc_page_with_initializer(type, upage, writable, init, aux))
+			// 자식 프로세스의 유저 메모리에 UNINIT 페이지를 하나 만들고 SPT 삽입.
                 return false;
         }
-        else {
-            if(!vm_alloc_page(type, upage, writable))
+		// STACK도 아니고 UNINIT도 아니면 vm_init 함수를 넣지 않은 상태에서 
+        else {  
+            if(!vm_alloc_page(type, upage, writable)) // uninit 페이지 만들고 SPT 삽입.
                 return false;
-            if(!vm_claim_page(upage))
+            if(!vm_claim_page(upage))  // 바로 물리 메모리와 매핑하고 Initialize한다.
                 return false;
         }
 
-        if (parent_page->operations->type != VM_UNINIT) {   // UNIT이 아닌 모든 페이지(stack 포함)는 부모의 것을 memcpy
+		// UNIT이 아닌 모든 페이지(stack 포함)에 대응하는 물리 메모리 데이터를 부모로부터 memcpy
+        if (parent_page->operations->type != VM_UNINIT) { 
             struct page* child_page = spt_find_page(dst, upage);
             memcpy(child_page->frame->kva, parent_page->frame->kva, PGSIZE);
         }
@@ -356,11 +362,11 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 		destroy(page);
 
         // if (page->operations->type == VM_FILE) {
-        //     do_munmap(page->va);
+            // do_munmap(page->va);
         //     // destroy(page);
         // }
     }
-    // hash_destroy(&spt->pages, spt_destructor);
+    // hash_clear(&spt->pages, spt_destructor);
 }
 
 void spt_destructor(struct hash_elem *e, void* aux) {

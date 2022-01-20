@@ -17,7 +17,7 @@ Executing 'pt-grow-bad':
 Page fault at 0x4747ef90: not present error reading page in user context.
 pt-grow-bad: exit(-1)
 Execution of 'pt-grow-bad' complete.
-Timer: 60 ticks
+Timer: 61 ticks
 Thread: 30 idle ticks, 29 kernel ticks, 2 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 80 reads, 232 writes

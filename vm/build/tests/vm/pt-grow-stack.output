@@ -14,16 +14,4 @@ Boot complete.
 Putting 'pt-grow-stack' into the file system...
 Executing 'pt-grow-stack':
 (pt-grow-stack) begin
-Page fault at 0x4747ee78: not present error writing page in user context.
-pt-grow-stack: exit(-1)
-Execution of 'pt-grow-stack' complete.
-Timer: 61 ticks
-Thread: 30 idle ticks, 29 kernel ticks, 2 user ticks
-hd0:0: 0 reads, 0 writes
-hd0:1: 85 reads, 254 writes
-hd1:0: 113 reads, 0 writes
-hd1:1: 0 reads, 0 writes
-Console: 1034 characters output
-Keyboard: 0 keys pressed
-Exception: 1 page faults
-Powering off...
+TIMEOUT

@@ -26,7 +26,7 @@ Differences in `diff -u' format:
 - (child-read) Child success
 - (child-read) end
 - child-read: exit(0)
-- (exec-read) Parent success
-- (exec-read) end
-- exec-read: exit(0)
-+ exec-read: exit(-1)
++ child-read: exit(-1)
+  (exec-read) Parent success
+  (exec-read) end
+  exec-read: exit(0)

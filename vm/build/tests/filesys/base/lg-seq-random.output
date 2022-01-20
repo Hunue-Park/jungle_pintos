@@ -24,13 +24,13 @@ Executing 'lg-seq-random':
 (lg-seq-random) end
 lg-seq-random: exit(0)
 Execution of 'lg-seq-random' complete.
-Timer: 100 ticks
-Thread: 30 idle ticks, 34 kernel ticks, 36 user ticks
+Timer: 201 ticks
+Thread: 30 idle ticks, 29 kernel ticks, 142 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 505 reads, 686 writes
 hd1:0: 107 reads, 0 writes
 hd1:1: 0 reads, 0 writes
-Console: 1232 characters output
+Console: 1233 characters output
 Keyboard: 0 keys pressed
 Exception: 0 page faults
 Powering off...

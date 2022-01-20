@@ -16,15 +16,20 @@
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 
+#include "include/vm/vm.h"
+
 const int STDIN = 1;
 const int STDOUT = 2;
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
-void check_address(void *addr);
 int add_file_to_fdt(struct file *file);
 void remove_file_from_fdt(int fd);
 static struct file *find_file_by_fd(int fd);
 
+/*----------------3. virtual memory : memory management----------------------*/
+struct page* check_address(void *addr);
+void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write);
+/*----------------3. virtual memory : memory management----------------------*/
 
 void halt(void);
 void exit(int status);
@@ -133,12 +138,14 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			
 		case SYS_READ:
 		{
+			check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 1);
 			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		}
 			
 		case SYS_WRITE:
 		{
+			check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 0);
 			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		}
@@ -345,13 +352,15 @@ void close(int fd) {
 
 
 /*------------- project 2 helper function -------------- */
-void check_address(void *addr)
+struct page* check_address(void *addr)
 {
-	struct thread *cur = thread_current();
-	if (addr == NULL || !is_user_vaddr(addr) || pml4_get_page(cur->pml4, addr) == NULL)
+	/* 주소 addr이 유저 가상 주소가 아니거나 pml4에 없으면 프로세스 종료 */
+	if (addr == NULL || !is_user_vaddr(addr))
 	{
 		exit(-1);
 	}
+	/* 유저 가상 주소면 SPT에서 페이지 찾아서 리턴 */
+	return spt_find_page(&thread_current()->spt, addr);
 }
 // fd 로 파일 찾는 함수
 static struct file *find_file_by_fd(int fd) {
@@ -392,3 +401,25 @@ void remove_file_from_fdt(int fd)
 }
 
 /* -----------------project 2 helper functions -----------*/
+
+/*----------------3. virtual memory : memory management----------------------*/
+/* read와 write 시스템 콜의 경우 파일 이름의 주소를 받는 대신 buffer의 주소를 받는다. */
+void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write){
+	/*  */
+	for (int i = 0; i < size; i++){
+		/* buffer의 시작 주소에서 size만큼 떨어진 주소까지
+		   각 주소가 포함된 page가 유저 가상 메모리 공간에 있는지,
+		   만약 있다면 spt 테이블에 들어있는지를 확인한다.  */
+		struct page* page = check_address(buffer + i); 
+
+		/* 해당 주소가 포함된 페이지가 spt에 없다면 */
+		if(page == NULL)
+			exit(-1);
+
+		/* write 시스템 콜을 호출했는데 이 페이지가 쓰기가 허용된 페이지가 아닌 경우 */
+		if(to_write == true && page->writable == false)
+			exit(-1);
+	}
+
+}
+/*----------------3. virtual memory : memory management----------------------*/
