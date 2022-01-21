@@ -65,6 +65,7 @@ struct hash {
 };
 
 /* A hash table iterator. */
+// hash iterator 란 해시 데이터를 정방향 또는 역방향 키 순서로 검색할 수 있게 해주는 것. 
 struct hash_iterator {
 	struct hash *hash;          /* The hash table. */
 	struct list *bucket;        /* Current bucket. */

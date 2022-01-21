@@ -37,6 +37,55 @@ process_init (void) {
 	struct thread *current = thread_current ();
 }
 
+// Load user stack with arguments
+void argument_stack(char **argv, int argc, void **rsp) {
+	// Save argument strings (character by character)
+	for (int i = argc - 1; i >= 0; i--) {
+		int argv_len = strlen(argv[i]);
+		for (int j = argv_len; j >= 0; j--) {
+			char argv_char = argv[i][j];
+			(*rsp)--;
+			**(char **)rsp = argv_char; // 1 byte
+		}
+		argv[i] = *(char **)rsp; 		// 리스트에 rsp 주소 넣기
+	}
+
+	// Word-align padding
+	int pad = (int)*rsp % 8;
+	for (int k = 0; k < pad; k++) {
+		(*rsp)--;
+		**(uint8_t **)rsp = 0;
+	}
+
+	// Pointers to the argument strings
+	(*rsp) -= 8;
+	**(char ***)rsp = 0;
+
+	for (int i = argc - 1; i >= 0; i--) {
+		(*rsp) -= 8;
+		**(char ***)rsp = argv[i];
+	}
+
+	// Return address
+	(*rsp) -= 8;
+	**(void ***)rsp = 0;
+}
+
+// 현재 스레드의 child_list 를 탐색해서 pid에 해당하는 child 를 찾고 그 pid 값을 리턴. 
+// Search current thread's child_list and return child with pid. Return NULL if not found.
+struct thread *get_child_with_pid(int pid) {
+	struct thread *cur = thread_current();
+	struct list *child_list = &cur->child_list;
+
+	for (struct list_elem *e = list_begin(child_list); e != list_end(child_list); e = list_next(e)) {
+		struct thread *t = list_entry(e, struct thread, child_elem);
+		if (t->tid == pid) {
+			return t;
+		}
+	}
+	return NULL;
+}
+
 /* Starts the first userland program, called "initd", loaded from FILE_NAME.
  * The new thread may be scheduled (and may even exit)
  * before process_create_initd() returns. Returns the initd's
@@ -753,6 +802,7 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		container->offset = ofs;
 		// container->writable = writable;
 
+		// uninit 타입의 페이지를 ANON type으로 변환될 가능성이 있는 페이지로 initialize 한다.
 		if (!vm_alloc_page_with_initializer(VM_ANON, upage, writable, lazy_load_segment, container)) {
 			return false;
 		}
@@ -786,52 +836,3 @@ bool setup_stack (struct intr_frame *if_) {
 	return success;
 }
 #endif /* VM */
-
-// Load user stack with arguments
-void argument_stack(char **argv, int argc, void **rsp) {
-	// Save argument strings (character by character)
-	for (int i = argc - 1; i >= 0; i--) {
-		int argv_len = strlen(argv[i]);
-		for (int j = argv_len; j >= 0; j--) {
-			char argv_char = argv[i][j];
-			(*rsp)--;
-			**(char **)rsp = argv_char; // 1 byte
-		}
-		argv[i] = *(char **)rsp; 		// 리스트에 rsp 주소 넣기
-	}
-
-	// Word-align padding
-	int pad = (int)*rsp % 8;
-	for (int k = 0; k < pad; k++) {
-		(*rsp)--;
-		**(uint8_t **)rsp = 0;
-	}
-
-	// Pointers to the argument strings
-	(*rsp) -= 8;
-	**(char ***)rsp = 0;
-
-	for (int i = argc - 1; i >= 0; i--) {
-		(*rsp) -= 8;
-		**(char ***)rsp = argv[i];
-	}
-
-	// Return address
-	(*rsp) -= 8;
-	**(void ***)rsp = 0;
-}
-
-// 현재 스레드의 child_list 를 탐색해서 pid에 해당하는 child 를 찾고 그 pid 값을 리턴. 
-// Search current thread's child_list and return child with pid. Return NULL if not found.
-struct thread *get_child_with_pid(int pid) {
-	struct thread *cur = thread_current();
-	struct list *child_list = &cur->child_list;
-
-	for (struct list_elem *e = list_begin(child_list); e != list_end(child_list); e = list_next(e)) {
-		struct thread *t = list_entry(e, struct thread, child_elem);
-		if (t->tid == pid) {
-			return t;
-		}
-	}
-	return NULL;
-}

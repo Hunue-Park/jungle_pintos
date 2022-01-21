@@ -15,12 +15,14 @@
 #include "intrinsic.h"
 #include "filesys/filesys.h"
 #include "filesys/file.h"
+#include "vm/vm.h"
 
 const int STDIN = 1;
 const int STDOUT = 2;
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
-void check_address(void *addr);
+struct page * check_address(void *addr);
+void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write);
 int add_file_to_fdt(struct file *file);
 void remove_file_from_fdt(int fd);
 static struct file *find_file_by_fd(int fd);
@@ -38,6 +40,9 @@ int write(int fd, const void *buffer, unsigned size);
 void seek(int fd, unsigned position);
 unsigned tell(int fd);
 void close(int fd);
+
+void* mmap (void *addr, size_t length, int writable, int fd, off_t offset);
+void munmap (void *addr);
 /* System call.
  *
  * Previously system call services was handled by the interrupt handler
@@ -133,14 +138,16 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			
 		case SYS_READ:
 		{
-			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
-			break;
+		check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 1);
+		f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
+		break;
 		}
-			
+		
 		case SYS_WRITE:
 		{
-			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
-			break;
+		check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 0);
+		f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
+		break;
 		}
 
 		case SYS_SEEK:
@@ -158,6 +165,18 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case SYS_CLOSE:
 		{
 			close(f->R.rdi);
+			break;
+		}
+
+		case SYS_MMAP:
+		{
+			f->R.rax = mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
+			break;
+		}
+
+		case SYS_MUNMAP:
+		{
+			munmap(f->R.rdi);
 			break;
 		}
 			
@@ -339,20 +358,64 @@ void close(int fd) {
 }
 
 
+// for VM
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
+
+    if (offset % PGSIZE != 0) {
+        return NULL;
+    }
+
+    if (pg_round_down(addr) != addr || is_kernel_vaddr(addr) || addr == NULL || (long long)length <= 0)
+        return NULL;
+    
+    if (fd == 0 || fd == 1)
+        exit(-1);
+    
+    // vm_overlap
+    if (spt_find_page(&thread_current()->spt, addr))
+        return NULL;
+
+    struct file *target = find_file_by_fd(fd);
+	// struct file *target = find_file_by_fd(fd);
+
+    if (target == NULL)
+        return NULL;
+
+    void * ret = do_mmap(addr, length, writable, target, offset);
+
+    return ret;
+}
+
+void munmap (void *addr) {
+    do_munmap(addr);
+}
+
+
 
 /*-------------project 2 syscall --------------------*/
 
 
 
 /*------------- project 2 helper function -------------- */
-void check_address(void *addr)
-{
-	struct thread *cur = thread_current();
-	if (addr == NULL || !is_user_vaddr(addr) || pml4_get_page(cur->pml4, addr) == NULL)
-	{
-		exit(-1);
-	}
+// page에 맞게 check_address 수정
+struct page * check_address(void *addr) {
+    if (is_kernel_vaddr(addr) || addr == NULL) {
+        exit(-1);
+    }
+    return spt_find_page(&thread_current()->spt, addr);
 }
+
+void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write) {
+    for (int i = 0; i < size; i++) {
+        struct page* page = check_address(buffer + i);    // 인자로 받은 buffer부터 buffer + size까지의 크기가 한 페이지의 크기를 넘을수도 있음
+        if(page == NULL)
+            exit(-1);
+        if(to_write == true && page->writable == false)
+            exit(-1);
+    }
+}
+
+/* -----------Project 3 change -----------------*/
 // fd 로 파일 찾는 함수
 static struct file *find_file_by_fd(int fd) {
 	struct thread *cur = thread_current();
