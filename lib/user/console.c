@@ -3,6 +3,8 @@
 #include <syscall.h>
 #include <syscall-nr.h>
 
+int vhprintf (int handle, const char *format, va_list args);
+
 /* The standard vprintf() function,
    which is like printf() but uses a va_list. */
 int

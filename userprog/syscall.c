@@ -15,12 +15,13 @@
 #include "intrinsic.h"
 #include "filesys/filesys.h"
 #include "filesys/file.h"
+#include "vm/vm.h"
 
 const int STDIN = 1;
 const int STDOUT = 2;
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
-void check_address(void *addr);
+struct page* check_address(void *addr);
 int add_file_to_fdt(struct file *file);
 void remove_file_from_fdt(int fd);
 static struct file *find_file_by_fd(int fd);
@@ -38,6 +39,9 @@ int write(int fd, const void *buffer, unsigned size);
 void seek(int fd, unsigned position);
 unsigned tell(int fd);
 void close(int fd);
+
+void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write);
+
 /* System call.
  *
  * Previously system call services was handled by the interrupt handler
@@ -132,13 +136,15 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		}
 			
 		case SYS_READ:
-		{
+		{	
+			check_valid_buffer(f->R.rdi, f->R.rsi, f->R.rdx, 1);
 			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		}
 			
 		case SYS_WRITE:
-		{
+		{	
+			check_valid_buffer(f->R.rdi, f->R.rsi, f->R.rdx, 0);
 			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		}
@@ -345,14 +351,15 @@ void close(int fd) {
 
 
 /*------------- project 2 helper function -------------- */
-void check_address(void *addr)
-{
-	struct thread *cur = thread_current();
-	if (addr == NULL || !is_user_vaddr(addr) || pml4_get_page(cur->pml4, addr) == NULL)
-	{
-		exit(-1);
-	}
-}
+// void check_address(void *addr)
+// {
+// 	struct thread *cur = thread_current();
+// 	if (addr == NULL || !is_user_vaddr(addr) || pml4_get_page(cur->pml4, addr) == NULL)
+// 	{
+// 		exit(-1);
+// 	}
+// }
+
 // fd 로 파일 찾는 함수
 static struct file *find_file_by_fd(int fd) {
 	struct thread *cur = thread_current();
@@ -391,4 +398,31 @@ void remove_file_from_fdt(int fd)
 	cur->fd_table[fd] = NULL;
 }
 
-/* -----------------project 2 helper functions -----------*/
+/*------------- project 3 helper function -------------- */
+struct page* check_address(void *addr)
+{
+
+	if (!is_kernel_vaddr(addr))
+	{
+		exit(-1);
+	}
+	/* 유저 가상 주소면 spt에서 페이지 찾아서 리턴*/
+	return spt_find_page(&thread_current()->spt, addr);
+}
+
+
+void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write) {
+	/* 버퍼 내의 시작부터 끝까지 각 주소를 모두 check_address*/
+	for (int i=0; i < size; i++) {
+		struct page *page = check_address(buffer + i);
+		
+		/* 해당 주소가 포함된 페이지가 spt에 없다면*/
+		if (page == NULL) {
+			exit(-1);
+		}
+		/* write 시스템 콜을 호출했는데 이 페이지가 쓰기가 허용된 페이지가 아닐 경우*/
+		if (to_write == true && page->writable == false) {
+			exit(-1);
+		}
+	}
+}

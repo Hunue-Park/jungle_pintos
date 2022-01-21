@@ -46,7 +46,7 @@ tid_t
 process_create_initd (const char *file_name) {
 	char *fn_copy;
 	tid_t tid;
-
+	printf ("here1.\n");
 	/* Make a copy of FILE_NAME.
 	 * Otherwise there's a race between the caller and load(). */
 	fn_copy = palloc_get_page (0);
@@ -231,8 +231,7 @@ process_exec (void *f_name) {
 	_if.cs = SEL_UCSEG;
 	_if.eflags = FLAG_IF | FLAG_MBS;
 
-	/* We first kill the current context */
-	process_cleanup ();
+	
 	// for argument parsing
 	char *argv[64]; 	// 인자 배열
 	int argc = 0;		// 인자 개수
@@ -245,6 +244,13 @@ process_exec (void *f_name) {
 		token = strtok_r(NULL, " ", &save_ptr);
 		argc++;
 	}
+
+	/* We first kill the current context */
+	process_cleanup ();
+
+#ifdef VM
+	supplemental_page_table_init(&thread_current()->spt);
+#endif
 
 	/* And then load the binary */
 	success = load (file_name, &_if);
@@ -330,7 +336,9 @@ process_cleanup (void) {
 	struct thread *curr = thread_current ();
 
 #ifdef VM
-	supplemental_page_table_kill (&curr->spt);
+	//supplemental_page_table_kill (&curr->spt);
+	if(!hash_empty(&curr->spt.spt_hash))
+		supplemental_page_table_kill(&curr->spt);
 #endif
 
 	uint64_t *pml4;
@@ -415,7 +423,7 @@ struct ELF64_PHDR {
 #define ELF ELF64_hdr
 #define Phdr ELF64_PHDR
 
-static bool setup_stack (struct intr_frame *if_);
+bool setup_stack(struct intr_frame *if_);
 static bool validate_segment (const struct Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		uint32_t read_bytes, uint32_t zero_bytes,
@@ -644,7 +652,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 }
 
 /* Create a minimal stack by mapping a zeroed page at the USER_STACK */
-static bool
+bool
 setup_stack (struct intr_frame *if_) {
 	uint8_t *kpage;
 	bool success = false;
@@ -670,7 +678,7 @@ setup_stack (struct intr_frame *if_) {
  * Returns true on success, false if UPAGE is already mapped or
  * if memory allocation fails. */
 static bool
-install_page (void *upage, void *kpage, bool writable) {
+install_page-(void *upage, void *kpage, bool writable) {
 	struct thread *t = thread_current ();
 
 	/* Verify that there's not already a page at that virtual
@@ -683,11 +691,39 @@ install_page (void *upage, void *kpage, bool writable) {
  * If you want to implement the function for only project 2, implement it on the
  * upper block. */
 
-static bool
+bool
+install_page (void *upage, void *kpage, bool writable) {
+	struct thread *t = thread_current ();
+
+	/* Verify that there's not already a page at that virtual
+	 * address, then map our page there. */
+	return (pml4_get_page (t->pml4, upage) == NULL
+			&& pml4_set_page (t->pml4, upage, kpage, writable));
+}
+
+
+bool
 lazy_load_segment (struct page *page, void *aux) {
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
+	struct file *file = ((struct container *)aux)->file;
+	off_t offsetof = ((struct container *)aux)->offset;
+	size_t page_read_bytes = ((struct container *)aux)->page_read_bytes;
+	size_t page_zero_bytes = PGSIZE - page_read_bytes;
+
+	file_seek(file, offsetof); // 파일의 offset을 offsetof로 바꾼다 -> 우리가 container에 저장해놨던 정보!
+
+	/* 페이지에 매핑된 물리 메모리(frame, 커널 가상 주소)에 파일 데이터를 읽어온다.
+	제대로 못 읽어오면 페이지를 free시키고 false를 리턴한다.
+	*/
+	if (file_read(file, page->frame->kva, page_read_bytes) != (int)page_read_bytes) {
+		palloc_free_page(page->frame->kva);
+		return false;
+	}
+	/* 만약 1페이지 안되게 값을 받아왔다면 남는 공간을 0으로 초기화 -> 보안을 위해!*/
+	memset(page->frame->kva + page_read_bytes, 0, page_zero_bytes);
+	return true;
 }
 
 /* Loads a segment starting at offset OFS in FILE at address
@@ -710,30 +746,47 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 	ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
 	ASSERT (pg_ofs (upage) == 0);
 	ASSERT (ofs % PGSIZE == 0);
-
+	/* 
+	upage 주소부터 1페이지 단위씩 UNINIT 페이지를 만들어 프로세스의 spt에 넣는다.(vm_alloc_page_with_initializer)
+	이 때 각 페이지 타입에 맞게 initializer도 맞춰준다.
+	*/
 	while (read_bytes > 0 || zero_bytes > 0) {
-		/* Do calculate how to fill this page.
-		 * We will read PAGE_READ_BYTES bytes from FILE
+		
+		/* 1 page보다 작거나 같은 메모리를 한 단위로 읽어온다.
+		페이지보다 작은 메모리를 읽어올 때 (페이지 - 메모리) 공간을 0으로 만들 것이다.
+
+		 * Do calculate how to fill this page.
+		 * We will read PAGE_READ_BYTES bytes from FILE (파일로부터 페이지 내 차지하는 byte를 읽는다.)
 		 * and zero the final PAGE_ZERO_BYTES bytes. */
 		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
+		/* 새 UNINIT 페이지를 만들어 현재 프로세스의 spt에 넣는다.
+			페이지에 해당하는 파일 정보를 container 구조체에 담아서 AUX로 넘겨준다.
+			타입에 맞게 initializer를 설정해준다.
+		*/
+		struct container *container = (struct container *)malloc(sizeof(struct container));
+		container->file = file;
+		container->page_read_bytes = page_read_bytes;
+		container->offset = ofs;
+
+
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		void *aux = NULL;
 		if (!vm_alloc_page_with_initializer (VM_ANON, upage,
-					writable, lazy_load_segment, aux))
+					writable, lazy_load_segment, container))
 			return false;
 
 		/* Advance. */
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
 		upage += PGSIZE;
+		ofs += page_read_bytes;
 	}
 	return true;
 }
 
 /* Create a PAGE of stack at the USER_STACK. Return true on success. */
-static bool
+bool
 setup_stack (struct intr_frame *if_) {
 	bool success = false;
 	void *stack_bottom = (void *) (((uint8_t *) USER_STACK) - PGSIZE);
@@ -742,6 +795,16 @@ setup_stack (struct intr_frame *if_) {
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
+
+	/* Anon 페이지로 만들 UNINIT 페이지를 stack_bottom에서 위로 PGSIZE만큼 1페이지 만든다.*/
+	if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1)) {
+		success = vm_claim_page(stack_bottom);
+
+		if (success) {
+			if_->rsp = USER_STACK;
+			thread_current()->stack_bottom = stack_bottom;
+		}
+	}
 
 	return success;
 }
@@ -782,7 +845,7 @@ void argument_stack(char **argv, int argc, void **rsp) {
 }
 
 // 현재 스레드의 child_list 를 탐색해서 pid에 해당하는 child 를 찾고 그 pid 값을 리턴. 
-// Search current thread's child_list and return child with pid. Return NULL if not found.
+// Search current tcdhread's child_list and return child with pid. Return NULL if not found.
 struct thread *get_child_with_pid(int pid) {
 	struct thread *cur = thread_current();
 	struct list *child_list = &cur->child_list;

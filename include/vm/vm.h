@@ -2,6 +2,7 @@
 #define VM_VM_H
 #include <stdbool.h>
 #include "threads/palloc.h"
+#include "lib/kernel/hash.h"
 
 enum vm_type {
 	/* page not initialized */
@@ -29,6 +30,10 @@ enum vm_type {
 #include "vm/file.h"
 #ifdef EFILESYS
 #include "filesys/page_cache.h"
+
+/* Project 3 */
+#include "lib/kernel/hash.h"
+#include "threads/vaddr.h"
 #endif
 
 struct page_operations;
@@ -46,8 +51,15 @@ struct page {
 	struct frame *frame;   /* Back reference for frame */
 
 	/* Your implementation */
-	/* --- Project 3: VM-SPT ---*/
+	/* --- Project 3-1: VM-SPT ---*/
+	
+
+	/* --- Project 3-2: VM-ANON ---*/
+	uint8_t type; // VM_BIN, VM_FILE, VM_ANON
+	bool writable; // True일 경우 해당 주소에 write 가능. False일 경우 해당 주소에 write 불가능
+	bool is_loaded; // 물리 메모리 탑재 여부 알려주는 플래그
 	struct hash_elem hash_elem;
+	int page_cnt; // file-mapped page를 위한 멤버
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
 	union {
@@ -90,11 +102,22 @@ struct supplemental_page_table {
 	struct hash spt_hash;
 };
 
+/* --- Project 3 --- */
+
+unsigned hash_func(const struct hash_elem *e, void *aux);
+bool less_func(const struct hash_elem *a, const struct hash_elem *b, void *aux);
+bool page_insert(struct hash *pages, struct page *p);
+bool page_delete(struct hash *pages, struct page *p);
+void spt_destructor(struct hash_elem *e, void* aux);
+struct list frame_table;
+
+/* --- Project 3 --- */
+
 #include "threads/thread.h"
 void supplemental_page_table_init (struct supplemental_page_table *spt);
 bool supplemental_page_table_copy (struct supplemental_page_table *dst,
 		struct supplemental_page_table *src);
-void supplemental_page_table_kill (struct supplemental_page_table *spt);
+void supplemental_pafge_table_kill (struct supplemental_page_table *spt);
 struct page *spt_find_page (struct supplemental_page_table *spt,
 		void *va);
 bool spt_insert_page (struct supplemental_page_table *spt, struct page *page);

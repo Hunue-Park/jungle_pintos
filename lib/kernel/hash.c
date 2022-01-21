@@ -25,8 +25,8 @@ bool
 hash_init (struct hash *h,
 		hash_hash_func *hash, hash_less_func *less, void *aux) {
 	h->elem_cnt = 0;
-	h->bucket_cnt = 4;
-	h->buckets = malloc (sizeof *h->buckets * h->bucket_cnt);
+	h->bucket_cnt = 4; // 0, 1, 2, 3
+	h->buckets = malloc (sizeof *h->buckets * h->bucket_cnt); 
 	h->hash = hash;
 	h->less = less;
 	h->aux = aux;
@@ -90,7 +90,9 @@ hash_destroy (struct hash *h, hash_action_func *destructor) {
    without inserting NEW. */
 struct hash_elem *
 hash_insert (struct hash *h, struct hash_elem *new) {
+	/* new의 해시값으로 buckets의 idx를 구하고 해당 idx의 bucket을 리턴*/
 	struct list *bucket = find_bucket (h, new);
+	/* 같은 va를 가진 elem이 없으면  */
 	struct hash_elem *old = find_elem (h, bucket, new);
 
 	if (old == NULL)
