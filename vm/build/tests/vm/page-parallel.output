@@ -15,21 +15,24 @@ Putting 'page-parallel' into the file system...
 Putting 'child-linear' into the file system...
 Executing 'page-parallel':
 (page-parallel) begin
-child-linear: exit(-1)
-child-linear: exit(-1)
-child-linear: exit(-1)
-child-linear: exit(-1)
 (page-parallel) wait for child 0
-(page-parallel) wait for child 0: FAILED
-page-parallel: exit(1)
+child-linear: exit(66)
+(page-parallel) wait for child 1
+child-linear: exit(66)
+child-linear: exit(66)
+(page-parallel) wait for child 2
+(page-parallel) wait for child 3
+child-linear: exit(66)
+(page-parallel) end
+page-parallel: exit(0)
 Execution of 'page-parallel' complete.
-Timer: 68 ticks
-Thread: 30 idle ticks, 32 kernel ticks, 6 user ticks
+Timer: 181 ticks
+Thread: 30 idle ticks, 38 kernel ticks, 113 user ticks
 hd0:0: 0 reads, 0 writes
-hd0:1: 131 reads, 456 writes
+hd0:1: 232 reads, 456 writes
 hd1:0: 209 reads, 0 writes
 hd1:1: 0 reads, 0 writes
-Console: 1191 characters output
+Console: 1272 characters output
 Keyboard: 0 keys pressed
 Exception: 0 page faults
 Powering off...

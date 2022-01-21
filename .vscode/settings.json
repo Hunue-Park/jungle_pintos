@@ -8,7 +8,8 @@
         "type_traits": "cpp",
         "utility": "cpp",
         "disk.h": "c",
-        "syscall-nr.h": "c"
+        "syscall-nr.h": "c",
+        "process.h": "c"
     },
     "C_Cpp.errorSquiggles": "Disabled"
 }

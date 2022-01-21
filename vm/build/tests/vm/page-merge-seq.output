@@ -18,17 +18,81 @@ Executing 'page-merge-seq':
 (page-merge-seq) init
 (page-merge-seq) sort chunk 0
 (page-merge-seq) child[0] exec
-child-sort: exit(-1)
-(page-merge-seq) child[0] wait fail: FAILED
-page-merge-seq: exit(1)
+child-sort: exit(123)
+(page-merge-seq) child[0] wait success
+(page-merge-seq) sort chunk 1
+(page-merge-seq) child[1] exec
+child-sort: exit(123)
+(page-merge-seq) child[1] wait success
+(page-merge-seq) sort chunk 2
+(page-merge-seq) child[2] exec
+child-sort: exit(123)
+(page-merge-seq) child[2] wait success
+(page-merge-seq) sort chunk 3
+(page-merge-seq) child[3] exec
+child-sort: exit(123)
+(page-merge-seq) child[3] wait success
+(page-merge-seq) sort chunk 4
+(page-merge-seq) child[4] exec
+child-sort: exit(123)
+(page-merge-seq) child[4] wait success
+(page-merge-seq) sort chunk 5
+(page-merge-seq) child[5] exec
+child-sort: exit(123)
+(page-merge-seq) child[5] wait success
+(page-merge-seq) sort chunk 6
+(page-merge-seq) child[6] exec
+child-sort: exit(123)
+(page-merge-seq) child[6] wait success
+(page-merge-seq) sort chunk 7
+(page-merge-seq) child[7] exec
+child-sort: exit(123)
+(page-merge-seq) child[7] wait success
+(page-merge-seq) sort chunk 8
+(page-merge-seq) child[8] exec
+child-sort: exit(123)
+(page-merge-seq) child[8] wait success
+(page-merge-seq) sort chunk 9
+(page-merge-seq) child[9] exec
+child-sort: exit(123)
+(page-merge-seq) child[9] wait success
+(page-merge-seq) sort chunk 10
+(page-merge-seq) child[10] exec
+child-sort: exit(123)
+(page-merge-seq) child[10] wait success
+(page-merge-seq) sort chunk 11
+(page-merge-seq) child[11] exec
+child-sort: exit(123)
+(page-merge-seq) child[11] wait success
+(page-merge-seq) sort chunk 12
+(page-merge-seq) child[12] exec
+child-sort: exit(123)
+(page-merge-seq) child[12] wait success
+(page-merge-seq) sort chunk 13
+(page-merge-seq) child[13] exec
+child-sort: exit(123)
+(page-merge-seq) child[13] wait success
+(page-merge-seq) sort chunk 14
+(page-merge-seq) child[14] exec
+child-sort: exit(123)
+(page-merge-seq) child[14] wait success
+(page-merge-seq) sort chunk 15
+(page-merge-seq) child[15] exec
+child-sort: exit(123)
+(page-merge-seq) child[15] wait success
+(page-merge-seq) merge
+(page-merge-seq) verify
+(page-merge-seq) success, buf_idx=1,032,192
+(page-merge-seq) end
+page-merge-seq: exit(0)
 Execution of 'page-merge-seq' complete.
-Timer: 140 ticks
-Thread: 30 idle ticks, 34 kernel ticks, 76 user ticks
+Timer: 4796 ticks
+Thread: 30 idle ticks, 65 kernel ticks, 4701 user ticks
 hd0:0: 0 reads, 0 writes
-hd0:1: 145 reads, 734 writes
+hd0:1: 4855 reads, 4640 writes
 hd1:0: 216 reads, 0 writes
 hd1:1: 0 reads, 0 writes
-Console: 1178 characters output
+Console: 3139 characters output
 Keyboard: 0 keys pressed
 Exception: 0 page faults
 Powering off...

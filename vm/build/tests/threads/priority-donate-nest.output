@@ -19,7 +19,7 @@ Executing 'priority-donate-nest':
 (priority-donate-nest) High thread got the lock.
 (priority-donate-nest) High thread finished.
 Kernel PANIC at ../../lib/kernel/list.c:142 in list_head(): assertion `list != NULL' failed.
-Call stack: 0x8004217dcf 0x8004218239 0x800421a814 0x8004221562 0x800421bb10 0x800421baaa 0x8004207384 0x8004207610.
+Call stack: 0x8004217dcf 0x8004218239 0x800421a814 0x80042217fc 0x800421bb31 0x800421bacb 0x8004207384 0x8004207610.
 The `backtrace' program can make call stacks useful.
 Read "Backtraces" in the "Debugging Tools" chapter
 of the Pintos documentation for more information.

@@ -20,7 +20,8 @@ threads/init.o: ../../threads/init.c ../../include/threads/init.h \
  ../../include/vm/file.h ../../include/filesys/file.h \
  ../../include/filesys/off_t.h ../../include/lib/stdbool.h \
  ../../include/lib/kernel/hash.h ../../include/lib/kernel/list.h \
- ../../include/userprog/process.h ../../include/userprog/exception.h \
- ../../include/userprog/gdt.h ../../include/userprog/syscall.h \
- ../../include/userprog/tss.h ../../tests/threads/tests.h \
- ../../include/filesys/filesys.h ../../include/filesys/fsutil.h
+ ../../include/userprog/process.h ../../include/vm/vm.h \
+ ../../include/userprog/exception.h ../../include/userprog/gdt.h \
+ ../../include/userprog/syscall.h ../../include/userprog/tss.h \
+ ../../tests/threads/tests.h ../../include/filesys/filesys.h \
+ ../../include/filesys/fsutil.h

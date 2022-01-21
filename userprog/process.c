@@ -233,6 +233,12 @@ process_exec (void *f_name) {
 
 	/* We first kill the current context */
 	process_cleanup ();
+
+#ifdef VM
+	supplemental_page_table_init(&thread_current()->spt);
+#endif
+
+
 	// for argument parsing
 	char *argv[64]; 	// 인자 배열
 	int argc = 0;		// 인자 개수
@@ -752,7 +758,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 	ASSERT (ofs % PGSIZE == 0);
 
 	/* upage 주소부터 1페이지 단위씩 UNINIT 페이지를 만들어 프로세스의 spt에 넣는다(vm_alloc_page_with_initializer).
-	   이 때 각 페이지의 타입에 맞게 initializer도 맞춰준다. */
+	   이 때 ANON 타입에 맞게 initializer도 맞춰준다. */
 	while (read_bytes > 0 || zero_bytes > 0) {
 		/* Do calculate how to fill this page.
 		 * We will read PAGE_READ_BYTES bytes from FILE
@@ -867,4 +873,14 @@ struct thread *get_child_with_pid(int pid) {
 		}
 	}
 	return NULL;
+}
+
+struct file* process_get_file(int fd){
+	struct thread *curr = thread_current();
+	struct file* fd_file = curr->fd_table[fd];
+
+	if (fd_file)
+		return fd_file;
+	else
+		return NULL;
 }

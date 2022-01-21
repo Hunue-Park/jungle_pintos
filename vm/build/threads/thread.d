@@ -15,4 +15,5 @@ threads/thread.o: ../../threads/thread.c ../../include/threads/thread.h \
  ../../include/lib/string.h ../../include/threads/flags.h \
  ../../include/threads/intr-stubs.h ../../include/threads/vaddr.h \
  ../../include/intrinsic.h ../../include/threads/mmu.h \
- ../../include/threads/pte.h ../../include/userprog/process.h
+ ../../include/threads/pte.h ../../include/userprog/process.h \
+ ../../include/vm/vm.h

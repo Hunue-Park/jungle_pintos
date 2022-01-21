@@ -52,12 +52,15 @@ file_backed_destroy (struct page *page) {
 void *
 do_mmap (void *addr, size_t length, int writable,
 		struct file *file, off_t offset) {
+	
 	struct file *mfile = file_reopen(file);
 
-    void * ori_addr = addr;
+    void * start_addr = addr;
     size_t read_bytes = length > file_length(file) ? file_length(file) : length;
     size_t zero_bytes = PGSIZE - read_bytes % PGSIZE;
 
+	/* 파일을 페이지 단위로 잘라 해당 파일의 정보들을 container 구조체에 저장한다.
+	   FILE-BACKED 타입의 UINIT 페이지를 만들어 lazy_load_segment()를 vm_init으로 넣는다. */
 	while (read_bytes > 0 || zero_bytes > 0) {
 		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
@@ -75,27 +78,33 @@ do_mmap (void *addr, size_t length, int writable,
 		addr       += PGSIZE;
 		offset     += page_read_bytes;
 	}
-	return ori_addr;
+	return start_addr;
 }
 
 /* Do the munmap */
 void
 do_munmap (void *addr) {
-	while (true) {
-        struct page* page = spt_find_page(&thread_current()->spt, addr);
-        
-        if (page == NULL)
-            break;
+	
+	/* ADDR부터 연속된 모든 페이지를 변경 사항을 업데이트하고 매핑 정보를 지운다.
+	   가상 페이지가 free되는 것이 아니다. present bit을 0으로 만들어 주는 것이다. */
+	while(true){
+		struct page* page = spt_find_page(&thread_current()->spt, addr);
 
-        struct container * aux = (struct container *) page->uninit.aux;
-        
-        // dirty(사용되었던) bit 체크
-        if(pml4_is_dirty(thread_current()->pml4, page->va)) {
-            file_write_at(aux->file, addr, aux->page_read_bytes, aux->offset);
-            pml4_set_dirty (thread_current()->pml4, page->va, 0);
-        }
+		if (page == NULL)
+			return NULL;
+		
+		struct container* container = (struct container *)page->uninit.aux;
 
-        pml4_clear_page(thread_current()->pml4, page->va);
-        addr += PGSIZE;
-    }
+		/* 수정된 페이지(더티 비트 1)는 파일에 업데이트 해 놓는다. 
+		   그리고 더티 비트를 0으로 만들어둔다. */
+		if (pml4_is_dirty(thread_current()->pml4, page->va)){
+			file_write_at(container->file, addr, 
+				container->page_read_bytes, container->offset);
+			pml4_set_dirty(thread_current()->pml4, page->va, 0);
+		}
+
+		/* present bit을 0으로 만든다. */
+		pml4_clear_page(thread_current()->pml4, page->va);
+		addr += PGSIZE;
+	}
 }

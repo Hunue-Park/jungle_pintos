@@ -16,7 +16,10 @@
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 
+/*----------------3. virtual memory : memory management----------------------*/
 #include "include/vm/vm.h"
+#include "include/vm/file.h"
+/*----------------3. virtual memory : memory management----------------------*/
 
 const int STDIN = 1;
 const int STDOUT = 2;
@@ -29,6 +32,9 @@ static struct file *find_file_by_fd(int fd);
 /*----------------3. virtual memory : memory management----------------------*/
 struct page* check_address(void *addr);
 void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write);
+
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset);
+void munmap(void *addr);
 /*----------------3. virtual memory : memory management----------------------*/
 
 void halt(void);
@@ -76,6 +82,9 @@ syscall_init (void) {
 void
 syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
+#ifdef VM
+	thread_current()->rsp_stack = f->rsp;
+#endif
 	switch (f->R.rax)
 	{
 		case SYS_HALT:
@@ -167,6 +176,19 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			close(f->R.rdi);
 			break;
 		}
+
+		/* ---------------Project 3. Virtual Memory -------------- */
+		case SYS_MMAP:
+		{
+			f->R.rax = mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
+			break;
+		}
+		case SYS_MUNMAP:
+		{
+			munmap(f->R.rdi);
+			break;
+		}
+		/* ---------------Project 3. Virtual Memory -------------- */
 			
 		default:
 			exit(-1);
@@ -176,6 +198,47 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	// printf ("system call!\n");
 	// thread_exit ();
 }
+
+/* ---------------Project 3. Virtual Memory -------------- */
+
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
+	// if (offset % PGSIZE != 0)  // 이게 맞는 건지 잘 모르겠음
+	// 	return NULL;
+	struct file *file = process_get_file(fd);
+
+	if (file == NULL)
+		return NULL;
+	
+	/* 파일의 시작점도 페이지 정렬 */
+	if (offset % PGSIZE != 0) {
+        return NULL;
+    }
+
+	/*  It must fail if addr is not page-aligned */
+	if (pg_round_down(addr) != addr || is_kernel_vaddr(addr))
+		return NULL;
+
+	/*  if the range of pages mapped overlaps any existing set of mapped pages */
+	if (spt_find_page(&thread_current()->spt, addr))
+		return NULL;
+
+	/* addr가 NULL(0), 파일의 길이가 0*/
+	if (addr == NULL || (long long)length == 0)
+		return NULL;
+	
+	/* file descriptors representing console input and output are not mappable */
+	if (fd == 0 || fd == 1)
+		exit(-1);
+	
+	return do_mmap(addr, length, writable, file, offset);
+}
+
+void munmap(void *addr){
+	do_munmap(addr);
+}
+
+/* ---------------Project 3. Virtual Memory -------------- */
+
 
 /*-------------project 2 syscall --------------------*/
 

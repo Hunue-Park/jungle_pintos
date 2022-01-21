@@ -18,15 +18,21 @@ Executing 'mmap-inherit':
 (mmap-inherit) begin
 (mmap-inherit) open "sample.txt"
 (mmap-inherit) mmap "sample.txt"
-mmap-inherit: exit(-1)
+(mmap-inherit) exec "child-inherit"
+(child-inherit) begin
+Page fault at 0x54321000: not present error writing page in user context.
+child-inherit: exit(-1)
+(mmap-inherit) checking that mmap'd file still has same data
+(mmap-inherit) end
+mmap-inherit: exit(0)
 Execution of 'mmap-inherit' complete.
-Timer: 65 ticks
-Thread: 30 idle ticks, 33 kernel ticks, 2 user ticks
+Timer: 69 ticks
+Thread: 30 idle ticks, 33 kernel ticks, 6 user ticks
 hd0:0: 0 reads, 0 writes
-hd0:1: 143 reads, 478 writes
+hd0:1: 209 reads, 478 writes
 hd1:0: 215 reads, 0 writes
 hd1:1: 0 reads, 0 writes
-Console: 1147 characters output
+Console: 1382 characters output
 Keyboard: 0 keys pressed
-Exception: 0 page faults
+Exception: 1 page faults
 Powering off...

@@ -15,19 +15,20 @@ Putting 'wait-twice' into the file system...
 Putting 'child-simple' into the file system...
 Executing 'wait-twice':
 (wait-twice) begin
-child-simple: exit(-1)
-(wait-twice) wait(exec()) = -1
+(child-simple) run
+child-simple: exit(81)
+(wait-twice) wait(exec()) = 81
 (wait-twice) wait(exec()) = -1
 (wait-twice) end
 wait-twice: exit(0)
 Execution of 'wait-twice' complete.
-Timer: 65 ticks
-Thread: 30 idle ticks, 32 kernel ticks, 3 user ticks
+Timer: 67 ticks
+Thread: 30 idle ticks, 32 kernel ticks, 5 user ticks
 hd0:0: 0 reads, 0 writes
-hd0:1: 113 reads, 446 writes
+hd0:1: 159 reads, 446 writes
 hd1:0: 204 reads, 0 writes
 hd1:1: 0 reads, 0 writes
-Console: 1106 characters output
+Console: 1125 characters output
 Keyboard: 0 keys pressed
 Exception: 0 page faults
 Powering off...

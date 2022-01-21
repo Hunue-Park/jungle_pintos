@@ -10,6 +10,7 @@ Differences in `diff -u' format:
   (mmap-ro) begin
   (mmap-ro) open "large.txt"
   (mmap-ro) mmap "large.txt" with writable=0
-- (mmap-ro) about to write into read-only mmap'd memory
+  (mmap-ro) about to write into read-only mmap'd memory
++ Page fault at 0x10000000: rights violation error writing page in user context.
 
 (Process exit codes are excluded for matching purposes.)

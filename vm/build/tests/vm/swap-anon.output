@@ -18,7 +18,7 @@ Executing 'swap-anon':
 (swap-anon) write sparsely over page 512
 (swap-anon) write sparsely over page 1024
 Kernel PANIC at ../../threads/mmu.c:242 in pml4_set_page(): assertion `is_kernel_vaddr(kpage)' failed.
-Call stack: 0x8004217dcf 0x800420d037 0x800421c0dc 0x80042212fa 0x8004221298 0x8004221139 0x800421cb01 0x8004208ee0 0x80042092fe 0x400cac 0x400cf5 0 0xccccccccccccccccInterrupt 0x0d (#GP General Protection Exception) at rip=8004214e09
+Call stack: 0x8004217dcf 0x800420d037 0x800421c0fd 0x8004221594 0x8004221532 0x80042213d3 0x800421cb70 0x8004208ee0 0x80042092fe 0x400cac 0x400cf5 0 0xccccccccccccccccInterrupt 0x0d (#GP General Protection Exception) at rip=8004214e09
  cr2=0000000000abbd60 error=               0
 rax cccccccccccccccc rbx 0000000000000000 rcx 00000080040b8000 rdx 00000000000003d4
 rsp 000000800423fd00 rbp 000000800423fd10 rsi 000000000000870f rdi 0000000000000000
