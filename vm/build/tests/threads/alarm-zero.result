@@ -1,0 +1,12 @@
+FAIL
+Test output failed to match any acceptable form.
+
+Acceptable output:
+  (alarm-zero) begin
+  (alarm-zero) PASS
+  (alarm-zero) end
+Differences in `diff -u' format:
++ here runtest
+  (alarm-zero) begin
+  (alarm-zero) PASS
+  (alarm-zero) end

@@ -47,7 +47,7 @@ void
 run_test (const char *name) 
 {
   const struct test *t;
-
+  printf("here runtest\n");
   for (t = tests; t < tests + sizeof tests / sizeof *tests; t++)
     if (!strcmp (name, t->name))
       {

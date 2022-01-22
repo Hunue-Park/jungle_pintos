@@ -247,6 +247,7 @@ run_task (char **argv) {
 		process_wait (process_create_initd (task));
 	}
 #else
+	
 	run_test (task);
 #endif
 	printf ("Execution of '%s' complete.\n", task);

@@ -39,6 +39,8 @@ int write(int fd, const void *buffer, unsigned size);
 void seek(int fd, unsigned position);
 unsigned tell(int fd);
 void close(int fd);
+void* mmap(void *addr, size_t length, int writable, int fd, off_t offset);
+void munmap(void *addr);
 
 void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write);
 
@@ -92,7 +94,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		}
 
 		case SYS_FORK:
-		{
+		{	
 			f->R.rax = fork(f->R.rdi, f);
 			break;
 		}
@@ -137,14 +139,14 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			
 		case SYS_READ:
 		{	
-			check_valid_buffer(f->R.rdi, f->R.rsi, f->R.rdx, 1);
+			check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 1);
 			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		}
 			
 		case SYS_WRITE:
 		{	
-			check_valid_buffer(f->R.rdi, f->R.rsi, f->R.rdx, 0);
+			check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 0);
 			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		}
@@ -162,7 +164,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		}
 			
 		case SYS_CLOSE:
-		{
+		{	
 			close(f->R.rdi);
 			break;
 		}
@@ -402,11 +404,11 @@ void remove_file_from_fdt(int fd)
 struct page* check_address(void *addr)
 {
 
-	if (!is_kernel_vaddr(addr))
+	if (addr == NULL || !is_user_vaddr(addr))
 	{
 		exit(-1);
 	}
-	/* 유저 가상 주소면 spt에서 페이지 찾아서 리턴*/
+	/* 유저 가상 주소면 SPT에서 페이지 찾아서 리턴 */
 	return spt_find_page(&thread_current()->spt, addr);
 }
 
@@ -415,14 +417,44 @@ void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write) {
 	/* 버퍼 내의 시작부터 끝까지 각 주소를 모두 check_address*/
 	for (int i=0; i < size; i++) {
 		struct page *page = check_address(buffer + i);
-		
 		/* 해당 주소가 포함된 페이지가 spt에 없다면*/
 		if (page == NULL) {
+			printf("page is null\n");
 			exit(-1);
 		}
 		/* write 시스템 콜을 호출했는데 이 페이지가 쓰기가 허용된 페이지가 아닐 경우*/
 		if (to_write == true && page->writable == false) {
+			printf("page is not writable\n");
 			exit(-1);
 		}
 	}
+}
+
+void* mmap(void *addr, size_t length, int writable, int fd, off_t offset) {
+	
+	/* failure case 1: 파일 시작점이 page-align되어 있는지 체크 */
+	if (offset % PGSIZE != 0) {
+        return NULL;
+    }
+
+	/* failure case 2: 해당 주소의 시작점이 page-align되어 있는지 & user 영역인지 & 주소값이 null인지 & length가 0이하인지*/
+    if (pg_round_down(addr) != addr || is_kernel_vaddr(addr) || addr == NULL || (long long)length <= 0)
+        return NULL;
+	/* failure case 3: 콘솔 입출력에 해당하는지(STDIN/STDOUT) */
+    if (fd == 0 || fd == 1)
+        exit(-1);
+    
+    // vm_overlap
+    if (spt_find_page(&thread_current()->spt, addr))
+        return NULL;
+
+    //struct file *target = process_get_file(fd);
+	struct file *target = find_file_by_fd(fd);
+
+    if (target == NULL)
+        return NULL;
+
+
+    return do_mmap(addr, length, writable, target, offset);
+
 }
