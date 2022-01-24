@@ -284,36 +284,39 @@ static bool vm_do_claim_page (struct page *page) {
 bool
 supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 		struct supplemental_page_table *src UNUSED) {
-			struct hash_iterator i;
-			hash_first (&i, &src->spt_hash);
-			while (hash_next (&i)) { // src 각 페이지를 반복문 통해 복사
-				struct page *parent_page = hash_entry(hash_cur (&i), struct page, hash_elem); // 현재 해시 테이블 element 리턴
-				enum vm_type type = page_get_type(parent_page); // 부모 페이지 type
-				void *upage = parent_page->va; // 부모 페이지 가상 주소
-				bool writable = parent_page->writable; // 부모 페이지 쓰기 가능 여부
-				vm_initializer *init = parent_page->uninit.init; // 부모 초기화되지 않은 페이지들 할당!
-				void* aux = parent_page->uninit.aux;
-
-				if (parent_page->uninit.type & VM_MARKER_0) {
-					setup_stack(&thread_current()->tf);
-				}
-				else if (parent_page->operations->type == VM_UNINIT) {
-					if (!vm_alloc_page_with_initializer(type, upage, writable, init, aux))
-					return false;
-				}
-				else {
-					if (!vm_alloc_page(type, upage, writable))
-						return false;
-					if (!vm_claim_page(upage))
-						return false;
-				}
-
-				if (parent_page->operations->type != VM_UNINIT) {
-					struct page * child_page = spt_find_page(dst, upage);
-					memcpy(child_page->frame->kva, parent_page->frame->kva, PGSIZE);
-				}
-			}
-			return true;
+	struct hash_iterator i;
+	struct hash * src_hash = &src->pages;
+	hash_first (&i, src_hash);
+	while (hash_next (&i)) {
+    	struct page *p = hash_entry (hash_cur (&i), struct page, hash_elem);
+		enum vm_type type = page_get_type(p);
+		void *upage = p->va;
+		bool writable = p->writable;
+		bool success = false;
+		vm_initializer *init = p->uninit.init;
+		void *aux = p->uninit.aux;
+		if(p->operations->type == VM_UNINIT){
+			if (!vm_alloc_page_with_initializer(type, upage, writable, init, aux))
+				return false;
+		}
+		else if(type == VM_ANON) {
+			if (!vm_alloc_page_with_initializer(type, upage, writable, init, aux))
+				return false;
+			if (!vm_claim_page(upage))
+				return false;
+			struct page* newpage = spt_find_page(dst, upage);
+			memcpy(newpage->frame->kva, p->frame->kva, PGSIZE);
+		}
+        else if (type == VM_FILE) {
+            if (!vm_alloc_page_with_initializer(type, upage, writable, init, aux))
+				return false;
+			if (!vm_claim_page(upage))
+				return false;
+			struct page* newpage = spt_find_page(dst, upage);
+			memcpy(newpage->frame->kva, p->frame->kva, PGSIZE);
+        }
+	}
+	return true;
 }
 
 
