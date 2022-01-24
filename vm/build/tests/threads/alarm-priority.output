@@ -11,7 +11,6 @@ hd1:1: detected 8,064 sector (3 MB) disk, model "QEMU HARDDISK", serial "QM00004
 Formatting file system...done.
 Boot complete.
 Executing 'alarm-priority':
-here runtest
 (alarm-priority) begin
 (alarm-priority) Thread priority 30 woke up.
 (alarm-priority) Thread priority 29 woke up.
@@ -25,12 +24,12 @@ here runtest
 (alarm-priority) Thread priority 21 woke up.
 (alarm-priority) end
 Execution of 'alarm-priority' complete.
-Timer: 558 ticks
-Thread: 520 idle ticks, 38 kernel ticks, 0 user ticks
+Timer: 557 ticks
+Thread: 519 idle ticks, 38 kernel ticks, 0 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 9 reads, 18 writes
 hd1:1: 0 reads, 0 writes
-Console: 1265 characters output
+Console: 1252 characters output
 Keyboard: 0 keys pressed
 Exception: 0 page faults
 Powering off...

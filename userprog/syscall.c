@@ -419,12 +419,12 @@ void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write) {
 		struct page *page = check_address(buffer + i);
 		/* 해당 주소가 포함된 페이지가 spt에 없다면*/
 		if (page == NULL) {
-			printf("page is null\n");
+			//printf("page is null\n");
 			exit(-1);
 		}
 		/* write 시스템 콜을 호출했는데 이 페이지가 쓰기가 허용된 페이지가 아닐 경우*/
 		if (to_write == true && page->writable == false) {
-			printf("page is not writable\n");
+			//printf("page is not writable\n");
 			exit(-1);
 		}
 	}
@@ -457,4 +457,8 @@ void* mmap(void *addr, size_t length, int writable, int fd, off_t offset) {
 
     return do_mmap(addr, length, writable, target, offset);
 
+}
+
+void munmap(void *addr) {
+	do_munmap(addr);
 }

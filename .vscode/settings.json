@@ -1,7 +1,8 @@
 {
     "files.associations": {
         "lib.h": "c",
-        "syscall.h": "c"
+        "syscall.h": "c",
+        "*.inc": "c"
     },
     "C_Cpp.dimInactiveRegions": false
 }

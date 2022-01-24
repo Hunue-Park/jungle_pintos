@@ -330,7 +330,7 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 		struct page *page = hash_entry (hash_cur (&i), struct page, hash_elem);
 
 		if (page->operations->type == VM_FILE) {
-			//do_munmap(page->va); pjt 4
+			do_munmap(page->va);
 		}
 		destroy(page);
 	}

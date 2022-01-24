@@ -1,18 +1,18 @@
 FAIL
 Kernel panic in run: PANIC at ../../userprog/exception.c:97 in kill(): Kernel bug - unexpected interrupt in kernel
-Call stack: 0x8004217de5 0x800421ca45 0x8004208ee0 0x80042092fe 0x800421abe3 0x800421a5cd 0x8004220d16 0x8004220c0c 0x800421c39b 0x800421bf14 0x800421b8d9 0x800421d19f 0x800421cd79 0x800421cbc6
+Call stack: 0x8004217dcf 0x800421ca2f 0x8004208ee0 0x80042092fe 0x800421abcd 0x800421a5b7 0x8004220cef 0x8004220be5 0x800421c385 0x800421befe 0x800421b8c3 0x800421d189 0x800421cd63 0x800421cbb0
 Translation of call stack:
-0x0000008004217de5: debug_panic (lib/kernel/debug.c:32)
-0x000000800421ca45: kill (userprog/exception.c:103)
+0x0000008004217dcf: debug_panic (lib/kernel/debug.c:32)
+0x000000800421ca2f: kill (userprog/exception.c:103)
 0x0000008004208ee0: intr_handler (threads/interrupt.c:352)
 0x00000080042092fe: intr_entry (threads/intr-stubs.o:?)
-0x000000800421abe3: find_elem (lib/kernel/hash.c:296)
-0x000000800421a5cd: hash_find (lib/kernel/hash.c:127)
-0x0000008004220d16: spt_find_page (vm/vm.c:102)
-0x0000008004220c0c: vm_alloc_page_with_initializer (vm/vm.c:61)
-0x000000800421c39b: load_segment (userprog/process.c:755)
-0x000000800421bf14: load (userprog/process.c:513)
-0x000000800421b8d9: process_exec (userprog/process.c:252)
-0x000000800421d19f: exec (userprog/syscall.c:234)
-0x000000800421cd79: syscall_handler (userprog/syscall.c:104)
-0x000000800421cbc6: no_sti (userprog/syscall-entry.o:?)
+0x000000800421abcd: find_elem (lib/kernel/hash.c:296)
+0x000000800421a5b7: hash_find (lib/kernel/hash.c:127)
+0x0000008004220cef: spt_find_page (vm/vm.c:102)
+0x0000008004220be5: vm_alloc_page_with_initializer (vm/vm.c:61)
+0x000000800421c385: load_segment (userprog/process.c:755)
+0x000000800421befe: load (userprog/process.c:513)
+0x000000800421b8c3: process_exec (userprog/process.c:252)
+0x000000800421d189: exec (userprog/syscall.c:234)
+0x000000800421cd63: syscall_handler (userprog/syscall.c:104)
+0x000000800421cbb0: no_sti (userprog/syscall-entry.o:?)

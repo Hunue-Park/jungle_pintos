@@ -41,6 +41,19 @@ file_backed_swap_in (struct page *page, void *kva) {
 static bool
 file_backed_swap_out (struct page *page) {
 	struct file_page *file_page UNUSED = &page->file;
+
+	if (page == NULL)
+	{
+		return false;
+	}
+
+	struct container * aux = (struct container *) page->uninit.aux;
+
+	//수정된 페이지(dirty page)인지 체크
+	if(pml4_is_dirty(thread_current()->pml4, page->va)){
+		file_write_at(aux->file, page->va, aux->page_read_bytes, aux->offset);
+		pml4_set_dirty(thread_current()->pml4, page->va);
+	}
 }
 
 /* Destory the file backed page. PAGE will be freed by the caller. */
@@ -90,4 +103,27 @@ do_mmap (void *addr, size_t length, int writable,
 /* Do the munmap */
 void
 do_munmap (void *addr) {
+	
+	/* ADDR부터 연속된 모든 페이지를 변경 사항을 업데이트하고 매핑 정보를 지운다.
+	   가상 페이지가 free되는 것이 아니다. present bit을 0으로 만들어 주는 것이다. */
+	while(true){
+		struct page* page = spt_find_page(&thread_current()->spt, addr);
+
+		if (page == NULL)
+			return NULL;
+		
+		struct container* container = (struct container *)page->uninit.aux;
+
+		/* 수정된 페이지(더티 비트 1)는 파일에 업데이트 해 놓는다. 
+		   그리고 더티 비트를 0으로 만들어둔다. */
+		if (pml4_is_dirty(thread_current()->pml4, page->va)){
+			file_write_at(container->file, addr, 
+				container->page_read_bytes, container->offset);
+			pml4_set_dirty(thread_current()->pml4, page->va, 0);
+		}
+
+		/* present bit을 0으로 만든다. */
+		pml4_clear_page(thread_current()->pml4, page->va);
+		addr += PGSIZE;
+	}
 }

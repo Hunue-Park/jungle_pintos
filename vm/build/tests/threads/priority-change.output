@@ -11,7 +11,6 @@ hd1:1: detected 8,064 sector (3 MB) disk, model "QEMU HARDDISK", serial "QM00004
 Formatting file system...done.
 Boot complete.
 Executing 'priority-change':
-here runtest
 (priority-change) begin
 (priority-change) Creating a high-priority thread 2.
 (priority-change) Thread 2 now lowering priority.
@@ -25,7 +24,7 @@ Thread: 30 idle ticks, 27 kernel ticks, 0 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 9 reads, 18 writes
 hd1:1: 0 reads, 0 writes
-Console: 1075 characters output
+Console: 1062 characters output
 Keyboard: 0 keys pressed
 Exception: 0 page faults
 Powering off...

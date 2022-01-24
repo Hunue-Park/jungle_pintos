@@ -16,7 +16,6 @@ Putting 'sample.txt' into the file system...
 Executing 'read-bad-ptr':
 (read-bad-ptr) begin
 (read-bad-ptr) open "sample.txt"
-page is null
 read-bad-ptr: exit(-1)
 Execution of 'read-bad-ptr' complete.
 Timer: 62 ticks
@@ -25,7 +24,7 @@ hd0:0: 0 reads, 0 writes
 hd0:1: 111 reads, 248 writes
 hd1:0: 105 reads, 0 writes
 hd1:1: 0 reads, 0 writes
-Console: 1060 characters output
+Console: 1047 characters output
 Keyboard: 0 keys pressed
 Exception: 0 page faults
 Powering off...
