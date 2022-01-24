@@ -60,6 +60,7 @@ struct page {
 	// struct list_elem mmap_elem;	// mmap 리스트 element
 
     struct hash_elem hash_elem;		// 해시 테이블 element
+	int reference_cnt;
 
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */

@@ -804,7 +804,9 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		// uninit 타입의 페이지를 ANON type으로 변환될 가능성이 있는 페이지로 initialize 한다.
 		if (!vm_alloc_page_with_initializer(VM_ANON, upage, writable, lazy_load_segment, container)) {
 			return false;
-		}
+		}    
+		// vm_anon 으로 집어넣는 이유? swap 할때 무슨 연관이 있는듯. 
+		// vm_file 으로 집어넣으니까 swap test 다 터짐. 
 
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
