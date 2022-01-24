@@ -48,7 +48,7 @@ file_backed_swap_in (struct page *page, void *kva) {
 	file_seek (file, offset);
 
 	if(file_read(file, kva, page_read_bytes) != (int)page_read_bytes) {
-		palloc_free_page(kva);
+		// palloc_free_page(kva);
 		return false;
 	}
 
@@ -92,11 +92,9 @@ do_mmap (void *addr, size_t length, int writable,
 		struct file *file, off_t offset) {
 	
 	struct file *mfile = file_reopen(file);
-
     void * start_addr = addr;
     size_t read_bytes = length > file_length(file) ? file_length(file) : length;
     size_t zero_bytes = PGSIZE - read_bytes % PGSIZE;
-
 	/* 파일을 페이지 단위로 잘라 해당 파일의 정보들을 container 구조체에 저장한다.
 	   FILE-BACKED 타입의 UINIT 페이지를 만들어 lazy_load_segment()를 vm_init으로 넣는다. */
 	while (read_bytes > 0 || zero_bytes > 0) {
@@ -107,7 +105,6 @@ do_mmap (void *addr, size_t length, int writable,
         container->file = mfile;
         container->offset = offset;
         container->page_read_bytes = page_read_bytes;
-
 		if (!vm_alloc_page_with_initializer (VM_FILE, addr, writable, lazy_load_segment, container)) {
 			return NULL;
         }
@@ -129,7 +126,7 @@ do_munmap (void *addr) {
 		struct page* page = spt_find_page(&thread_current()->spt, addr);
 
 		if (page == NULL)
-			return NULL;
+			break;
 		
 		struct container* container = (struct container *)page->uninit.aux;
 

@@ -200,38 +200,64 @@ syscall_handler (struct intr_frame *f UNUSED) {
 }
 
 /* ---------------Project 3. Virtual Memory -------------- */
+void *mmap(void *addr, size_t length, int writable, int fd, off_t offset)
+{
 
-void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
-	// if (offset % PGSIZE != 0)  // 이게 맞는 건지 잘 모르겠음
-	// 	return NULL;
-	struct file *file = process_get_file(fd);
-
-	if (file == NULL)
+	if (offset % PGSIZE != 0)
+	{
 		return NULL;
-	
-	/* 파일의 시작점도 페이지 정렬 */
-	if (offset % PGSIZE != 0) {
-        return NULL;
-    }
+	}
 
-	/*  It must fail if addr is not page-aligned */
-	if (pg_round_down(addr) != addr || is_kernel_vaddr(addr))
+	if (pg_round_down(addr) != addr || is_kernel_vaddr(addr) || addr == NULL || (long long)length <= 0)
 		return NULL;
 
-	/*  if the range of pages mapped overlaps any existing set of mapped pages */
+	if (fd == 0 || fd == 1)
+		exit(-1);
+
+	// vm_overlap
 	if (spt_find_page(&thread_current()->spt, addr))
 		return NULL;
 
-	/* addr가 NULL(0), 파일의 길이가 0*/
-	if (addr == NULL || (long long)length == 0)
+	// struct file *target = process_get_file(fd);
+	struct file *target = find_file_by_fd(fd);
+
+	if (target == NULL)
 		return NULL;
-	
-	/* file descriptors representing console input and output are not mappable */
-	if (fd == 0 || fd == 1)
-		exit(-1);
-	
-	return do_mmap(addr, length, writable, file, offset);
+	void *ret = do_mmap(addr, length, writable, target, offset);
+
+	return ret;
 }
+// void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
+// 	// if (offset % PGSIZE != 0)  // 이게 맞는 건지 잘 모르겠음
+// 	// 	return NULL;
+// 	struct file *file = process_get_file(fd);
+
+// 	if (file == NULL)
+// 		return NULL;
+	
+// 	/* 파일의 시작점도 페이지 정렬 */
+// 	if (offset % PGSIZE != 0) {
+//         return NULL;
+//     }
+
+// 	/*  It must fail if addr is not page-aligned */
+// 	if (pg_round_down(addr) != addr || is_kernel_vaddr(addr))
+// 		return NULL;
+
+// 	/*  if the range of pages mapped overlaps any existing set of mapped pages */
+// 	if (spt_find_page(&thread_current()->spt, addr))
+// 		return NULL;
+
+// 	/* addr가 NULL(0), 파일의 길이가 0*/
+// 	if (addr == NULL || (long long)length == 0)
+// 		return NULL;
+	
+// 	/* file descriptors representing console input and output are not mappable */
+// 	if (fd == 0 || fd == 1)
+// 		exit(-1);
+	
+// 	return do_mmap(addr, length, writable, file, offset);
+// }
 
 void munmap(void *addr){
 	do_munmap(addr);

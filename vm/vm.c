@@ -6,6 +6,10 @@
 /*----------------3. virtual memory : memory management----------------------*/
 #include "threads/mmu.h"
 #include "userprog/process.h"
+
+struct list frame_table;
+/* Get the struct frame, that will be evicted. */
+struct list_elem *start;
 /*----------------3. virtual memory : memory management----------------------*/
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
@@ -20,6 +24,11 @@ void vm_init(void)
 	register_inspect_intr();
 	/* DO NOT MODIFY UPPER LINES. */
 	/* TODO: Your code goes here. */
+
+	/*----------------3. virtual memory : memory management----------------------*/
+	list_init(&frame_table);
+	start = list_begin(&frame_table);
+	/*----------------3. virtual memory : memory management----------------------*/
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -156,8 +165,6 @@ void spt_remove_page(struct supplemental_page_table *spt, struct page *page)
 	return true;
 }
 
-/* Get the struct frame, that will be evicted. */
-struct list_elem *start;
 
 static struct frame *
 vm_get_victim(void)
@@ -195,9 +202,9 @@ vm_evict_frame(void)
 {
 	struct frame *victim UNUSED = vm_get_victim();
 	/* TODO: swap out the victim and return the evicted frame. */
-	if (swap_out(victim->page))
-		return victim;
-	return NULL;
+	swap_out(victim->page);
+	
+	return victim;
 }
 
 /* palloc() and get frame. If there is no available page, evict the page
@@ -222,7 +229,7 @@ vm_get_frame(void)
 
 		return frame;
 	}
-	// list_push_back (&frame_table, &frame->frame_elem);
+	list_push_back (&frame_table, &frame->frame_elem);
 
 	frame->page = NULL;
 
@@ -278,8 +285,10 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
 			}
 			return false;
 		}
-		else
+		else{
 			return true;
+		}
+			
 	}
 	return false;
 }
@@ -300,8 +309,9 @@ bool vm_claim_page(void *va UNUSED)
 	struct page *page;
 	/* TODO: Fill this function */
 	page = spt_find_page(&thread_current()->spt, va);
-	if (page == NULL)
+	if (page == NULL){
 		return false;
+	}
 
 	return vm_do_claim_page(page);
 }

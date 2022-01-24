@@ -103,7 +103,6 @@ bool less_func(const struct hash_elem *a, const struct hash_elem *b, void *aux);
 bool insert_page(struct hash *pages, struct page *p);
 bool delete_page(struct hash *pages, struct page *p);
 void spt_destructor(struct hash_elem *e, void* aux);
-struct list frame_table;
 /* --------------------3. virtual memory : memory management-------------- */
 
 #include "threads/thread.h"
