@@ -226,6 +226,7 @@ bitmap_count (const struct bitmap *b, size_t start, size_t cnt, bool value) {
 
 /* Returns true if any bits in B between START and START + CNT,
    exclusive, are set to VALUE, and false otherwise. */
+/* START부터 CNT까지의 범위 내에 VALUE와 동일한 value값을 가진 비트가 하나라도 있으면 */
 bool
 bitmap_contains (const struct bitmap *b, size_t start, size_t cnt, bool value) {
 	size_t i;
@@ -273,9 +274,11 @@ bitmap_scan (const struct bitmap *b, size_t start, size_t cnt, bool value) {
 	ASSERT (start <= b->bit_cnt);
 
 	if (cnt <= b->bit_cnt) {
-		size_t last = b->bit_cnt - cnt;
+		size_t last = b->bit_cnt - cnt;  // cnt만큼 연속된 비트들의 마지막 시작지점
 		size_t i;
 		for (i = start; i <= last; i++)
+			/* I로부터 CNT까지 비트들 중 VALUE와 다른 값을 가진 비트가
+			   하나도 없으면 I를 리턴한다. */
 			if (!bitmap_contains (b, i, cnt, !value))
 				return i;
 	}

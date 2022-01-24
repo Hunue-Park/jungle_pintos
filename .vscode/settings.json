@@ -9,7 +9,14 @@
         "utility": "cpp",
         "disk.h": "c",
         "syscall-nr.h": "c",
-        "process.h": "c"
+        "process.h": "c",
+        "*.inc": "c",
+        "*.tcc": "c",
+        "fstream": "c",
+        "iosfwd": "c",
+        "limits": "c",
+        "sstream": "c",
+        "streambuf": "c"
     },
     "C_Cpp.errorSquiggles": "Disabled"
 }

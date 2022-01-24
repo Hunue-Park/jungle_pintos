@@ -217,7 +217,7 @@ vm_get_frame(void)
 	   else 성공했다면 frame 구조체 커널 주소 멤버에 위에서 할당받은 메모리 커널 주소 넣기 */
 	if (frame->kva == NULL)
 	{
-		// frame = vm_evict_frame();
+		frame = vm_evict_frame();
 		frame->page = NULL;
 
 		return frame;

@@ -10,4 +10,5 @@ vm/anon.o: ../../vm/anon.c ../../include/vm/vm.h \
  ../../include/lib/kernel/hash.h ../../include/lib/kernel/list.h \
  ../../include/threads/thread.h ../../include/lib/kernel/list.h \
  ../../include/threads/interrupt.h ../../include/threads/synch.h \
- ../../include/lib/string.h
+ ../../include/lib/string.h ../../include/threads/mmu.h \
+ ../../include/threads/pte.h ../../include/threads/vaddr.h
