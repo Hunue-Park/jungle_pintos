@@ -221,7 +221,6 @@ int
 process_exec (void *f_name) {
 	char *file_name = f_name;
 	bool success;
-
 	/* We cannot use the intr_frame in the thread structure.
 	 * This is because when current thread rescheduled,
 	 * it stores the execution information to the member. */
@@ -230,38 +229,47 @@ process_exec (void *f_name) {
 	_if.cs = SEL_UCSEG;
 	_if.eflags = FLAG_IF | FLAG_MBS;
 
-	
-	// for argument parsing
-	char *argv[64]; 	// 인자 배열
-	int argc = 0;		// 인자 개수
+	// project2- argument parsing
+	char *argv[30];
+	int argc = 0;
 
-	char *token;		// 실제 리턴 받을 토큰
-	char *save_ptr;		// 토큰 분리 후 문자열 중 남는 부분
+	char *token, *save_ptr;
 	token = strtok_r(file_name, " ", &save_ptr);
+
 	while (token != NULL) {
 		argv[argc] = token;
 		token = strtok_r(NULL, " ", &save_ptr);
 		argc++;
 	}
-	
+
 	/* We first kill the current context */
 	process_cleanup ();
-	
+
+#ifdef VM
+	supplemental_page_table_init(&thread_current()->spt);
+#endif
 
 	/* And then load the binary */
 	success = load (file_name, &_if);
 
 	/* If load failed, quit. */
-	if (!success) {
-		palloc_free_page (file_name);
+	if (!success)
+	{
+		palloc_free_page(file_name);
 		return -1;
 	}
-	// 유저스택에 인자 넣기
+
+	// Project 2. Pass args - load arguments onto the user stack
 	void **rspp = &_if.rsp;
-	argument_stack(argv, argc, rspp);
+
+	load_userStack(argv, argc, rspp);
+	// hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, 1);
+
 	_if.R.rdi = argc;
 	_if.R.rsi = (uint64_t)*rspp + sizeof(void *);
-	
+
+	palloc_free_page (file_name);
+
 	/* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
