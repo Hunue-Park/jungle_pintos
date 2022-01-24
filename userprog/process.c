@@ -46,7 +46,6 @@ tid_t
 process_create_initd (const char *file_name) {
 	char *fn_copy;
 	tid_t tid;
-
 	/* Make a copy of FILE_NAME.
 	 * Otherwise there's a race between the caller and load(). */
 	fn_copy = palloc_get_page (0);
@@ -85,7 +84,7 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	/* Clone current thread to new thread.*/
 	struct thread *cur = thread_current();
 	memcpy(&cur->parent_if, if_, sizeof(struct intr_frame));
-	tid_t tid = thread_create(name, PRI_DEFAULT, __do_fork, cur);
+	tid_t tid = thread_create(name, cur->priority, __do_fork, cur);
 	if (tid == TID_ERROR) {
 		return TID_ERROR;
 	}
@@ -96,6 +95,7 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	}
 	return tid;
 }
+
 #ifndef VM
 /* Duplicate the parent's address space by passing this function to the
  * pml4_for_each. This is only for the project 2. */
