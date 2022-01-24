@@ -313,7 +313,7 @@ process_exit (void) {
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
 	// project 2
-	for (int i = 0; i < FDCOUNT_LIMIT; i++) {
+	for (int i = 0; i < cur->fd_idx; i++) {
 		close(i);
 	}
 	palloc_free_multiple(cur->fd_table, FDT_PAGES);  // multi-oom
@@ -322,6 +322,7 @@ process_exit (void) {
 	process_cleanup ();
 
 	// wake up blocked parent
+	sema_up(&cur->fork_sema);  // do_fork를 하던중 에러케이스로 인해 자식이 비정상 종료되었을 경우
 	sema_up(&cur->wait_sema);   // 나 끝났어~
 	// parent가 child 의 exit status 'wait' 를 받을때까지 child의 termination을 미룸.
 	sema_down(&cur->free_sema);  // 신호 받았니? 
