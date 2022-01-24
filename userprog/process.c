@@ -95,7 +95,6 @@ tid_t
 process_create_initd (const char *file_name) {
 	char *fn_copy;
 	tid_t tid;
-
 	/* Make a copy of FILE_NAME.
 	 * Otherwise there's a race between the caller and load(). */
 	fn_copy = palloc_get_page (0);
@@ -134,7 +133,7 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	/* Clone current thread to new thread.*/
 	struct thread *cur = thread_current();
 	memcpy(&cur->parent_if, if_, sizeof(struct intr_frame));
-	tid_t tid = thread_create(name, PRI_DEFAULT, __do_fork, cur);
+	tid_t tid = thread_create(name, cur->priority, __do_fork, cur);
 	if (tid == TID_ERROR) {
 		return TID_ERROR;
 	}
@@ -337,7 +336,6 @@ process_wait (tid_t child_tid UNUSED) {
 	// return -1;
 
 	// project 2-3 syscall 
-	struct thread *cur = thread_current();
 	struct thread *child = get_child_with_pid(child_tid);
 
 	// Not my child
@@ -363,7 +361,7 @@ process_exit (void) {
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
 	// project 2
-	for (int i = 0; i < FDCOUNT_LIMIT; i++) {
+	for (int i = 0; i < cur->fd_idx; i++) {
 		close(i);
 	}
 	palloc_free_multiple(cur->fd_table, FDT_PAGES);  // multi-oom
@@ -372,6 +370,7 @@ process_exit (void) {
 	process_cleanup ();
 
 	// wake up blocked parent
+	sema_up(&cur->fork_sema);  // do_fork를 하던중 에러케이스로 인해 자식이 비정상 종료되었을 경우
 	sema_up(&cur->wait_sema);   // 나 끝났어~
 	// parent가 child 의 exit status 'wait' 를 받을때까지 child의 termination을 미룸.
 	sema_down(&cur->free_sema);  // 신호 받았니? 

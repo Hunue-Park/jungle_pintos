@@ -303,7 +303,7 @@ int read(int fd, void *buffer, unsigned size) {
 		lock_release(&filesys_lock);
 	}
 	return read_result;
-}
+} 
 // fd 인자를 받아서 파일 크기를 리턴
 int filesize(int fd) {
 	struct file *open_file = find_file_by_fd(fd);

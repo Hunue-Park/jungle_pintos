@@ -14,7 +14,6 @@ main (int argc, char *argv[])
 
   if (((unsigned long long) argv & 7) != 0)
     msg ("argv and stack must be word-aligned, actually %p", argv);
-
   msg ("begin");
   msg ("argc = %d", argc);
   for (i = 0; i <= argc; i++)

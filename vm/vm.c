@@ -294,6 +294,14 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 			struct page* newpage = spt_find_page(dst, upage);
 			memcpy(newpage->frame->kva, p->frame->kva, PGSIZE);
 		}
+        else if (type == VM_FILE) {
+            if (!vm_alloc_page_with_initializer(type, upage, writable, init, aux))
+				return false;
+			if (!vm_claim_page(upage))
+				return false;
+			struct page* newpage = spt_find_page(dst, upage);
+			memcpy(newpage->frame->kva, p->frame->kva, PGSIZE);
+        }
 	}
 	return true;
 }
