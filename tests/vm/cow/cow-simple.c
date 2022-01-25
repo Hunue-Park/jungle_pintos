@@ -23,6 +23,7 @@ test_main (void)
 
 	child = fork ("child");
 	if (child == 0) {
+		msg("here, in child process \n");
 		CHECK (memcmp (buf, large, strlen (buf)) == 0, "check data consistency");
 
 		pa_child = get_phys_addr((void*)large);
