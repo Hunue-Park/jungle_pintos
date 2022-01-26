@@ -7,8 +7,8 @@
 #include "threads/mmu.h"
 #include "userprog/process.h"
 
-struct list frame_table;
 /* Get the struct frame, that will be evicted. */
+struct list frame_table;
 struct list_elem *start;
 /*----------------3. virtual memory : memory management----------------------*/
 
@@ -172,9 +172,11 @@ vm_get_victim(void)
 	struct frame *victim = NULL;
 	/* FIFO eviction policy */
 	// victim = list_entry(list_pop_front (&frame_table), struct frame, frame_elem);
+	// // swap-file, swap-anon 실패
 	struct thread *curr = thread_current();
 	struct list_elem *e = start;
 
+	/*  */
 	for (start = e; start != list_end(&frame_table); start = list_next(start))
 	{
 		victim = list_entry(start, struct frame, frame_elem);
@@ -224,13 +226,13 @@ vm_get_frame(void)
 	   else 성공했다면 frame 구조체 커널 주소 멤버에 위에서 할당받은 메모리 커널 주소 넣기 */
 	if (frame->kva == NULL)
 	{
-		frame = vm_evict_frame();
-		frame->page = NULL;
+		frame = vm_evict_frame();  // 수정!
+		frame->page = NULL; 
 
 		return frame;
 	}
-	list_push_back (&frame_table, &frame->frame_elem);
-
+	list_push_back (&frame_table, &frame->frame_elem);  /* 새 프레임을 프레임 테이블에 넣어 관리한다. */
+  
 	frame->page = NULL;
 
 	ASSERT(frame != NULL);

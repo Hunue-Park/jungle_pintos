@@ -1,2 +1,2 @@
 FAIL
-run: TIMEOUT
+run: exec child 10 of 10: "child-syn-read 9": FAILED

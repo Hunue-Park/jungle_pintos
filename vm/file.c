@@ -71,7 +71,7 @@ file_backed_swap_out (struct page *page) {
 	/* 수정된 페이지(더티 비트 1)는 파일에 업데이트 해 놓는다. 
 		그리고 더티 비트를 0으로 만들어둔다. */
 	if (pml4_is_dirty(thread_current()->pml4, page->va)){
-		file_write_at(container->file, page->va, 
+		file_write_at(container->file, page->frame->kva, 
 			container->page_read_bytes, container->offset);
 		pml4_set_dirty(thread_current()->pml4, page->va, 0);
 	}

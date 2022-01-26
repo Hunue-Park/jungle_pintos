@@ -1,2 +1,2 @@
 FAIL
-run: open "buf5": FAILED
+run: wait for child 1: FAILED

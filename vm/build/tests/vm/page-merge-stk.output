@@ -25,22 +25,34 @@ child-qsort: exit(72)
 child-qsort: exit(72)
 (page-merge-stk) sort chunk 5
 child-qsort: exit(72)
-(page-merge-stk) sort chunk 6
 child-qsort: exit(72)
+(page-merge-stk) sort chunk 6
 (page-merge-stk) sort chunk 7
 child-qsort: exit(72)
 (page-merge-stk) wait for child 0
-(page-merge-stk) open "buf0": FAILED
-page-merge-stk: exit(1)
 child-qsort: exit(72)
+(page-merge-stk) wait for child 1
+child-qsort: exit(72)
+(page-merge-stk) wait for child 2
+(page-merge-stk) wait for child 3
+child-qsort: exit(72)
+(page-merge-stk) wait for child 4
+(page-merge-stk) wait for child 5
+(page-merge-stk) wait for child 6
+(page-merge-stk) wait for child 7
+(page-merge-stk) merge
+(page-merge-stk) verify
+(page-merge-stk) success, buf_idx=1,048,576
+(page-merge-stk) end
+page-merge-stk: exit(0)
 Execution of 'page-merge-stk' complete.
-Timer: 2818 ticks
-Thread: 36 idle ticks, 50 kernel ticks, 2733 user ticks
+Timer: 3817 ticks
+Thread: 30 idle ticks, 51 kernel ticks, 3736 user ticks
 hd0:0: 0 reads, 0 writes
-hd0:1: 2445 reads, 6214 writes
+hd0:1: 4862 reads, 6726 writes
 hd1:0: 224 reads, 0 writes
 hd1:1: 0 reads, 0 writes
-Console: 1503 characters output
+Console: 1860 characters output
 Keyboard: 0 keys pressed
 Exception: 0 page faults
 Powering off...
