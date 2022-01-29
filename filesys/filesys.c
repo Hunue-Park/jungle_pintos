@@ -13,6 +13,15 @@ struct disk *filesys_disk;
 
 static void do_format (void);
 
+// Project 4-2 : fime path parsing
+
+// defined in filesys.h
+// struct path{
+// 	char ** dirnames; //list of directories
+// 	int dircount; //level of directory
+// 	char * filename; //
+// };
+
 struct path* parse_filepath (const char *name_original){
 	const int MAX_PATH_CNT = 30;
 	struct path* path = malloc(sizeof(struct path));
@@ -51,7 +60,6 @@ struct path* parse_filepath (const char *name_original){
 	return path;
 }
 
-
 /* Initializes the file system module.
  * If FORMAT is true, reformats the file system. */
 void
@@ -62,7 +70,7 @@ filesys_init (bool format) {
 
 	inode_init ();
 
-	// Project 3
+	// Project 3. (parallel-merge)
 	lock_init(&filesys_lock);
 
 #ifdef EFILESYS

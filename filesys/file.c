@@ -9,16 +9,24 @@
  * and returns the new file.  Returns a null pointer if an
  * allocation fails or if INODE is null. */
 struct file *
-file_open (struct inode *inode) {
-	struct file *file = calloc (1, sizeof *file);
-	if (inode != NULL && file != NULL) {
+file_open(struct inode *inode)
+{
+	struct file *file = calloc(1, sizeof *file);
+	if (inode != NULL && file != NULL)
+	{
 		file->inode = inode;
 		file->pos = 0;
 		file->deny_write = false;
+
+		// Project2-extra
+		file->dupCount = 0;
+
 		return file;
-	} else {
-		inode_close (inode);
-		free (file);
+	}
+	else
+	{
+		inode_close(inode);
+		free(file);
 		return NULL;
 	}
 }

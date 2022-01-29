@@ -8,13 +8,19 @@
 #include "threads/thread.h"
 
 #include "filesys/fat.h"
+
 // moved to directory.h
 // /* A directory. */
 // struct dir {
 // 	struct inode *inode;                /* Backing store. */
-// 	off_t pos;                          /* Current position. */
+// 	off_t pos;                          /* Current position. */ // dir_readdir에서 사용; 어느 entry까지 읽었나
+
+// 	//project 4-2 : for casting to 'struct file' (syscall close)
+// 	bool deny_write; // not used
+// 	int dupCount; // not used
 // };
 
+// in directory.h
 // /* A single directory entry. */
 // struct dir_entry {
 // 	disk_sector_t inode_sector;         /* Sector number of header. */
@@ -198,7 +204,7 @@ dir_add (struct dir *dir, const char *name, disk_sector_t inode_sector) {
 	ASSERT (name != NULL);
 
 	/* Check NAME for validity. */
-	if (*name == '\0' || strlen (name) > NAME_MAX)
+	if (*name == '\0' || strlen (name) > NAME_MAX) // #ifdef DBG file name limit - optional to keep or change
 		return false;
 
 	/* Check that NAME is not in use. */
@@ -208,6 +214,8 @@ dir_add (struct dir *dir, const char *name, disk_sector_t inode_sector) {
 	/* Set OFS to offset of free slot.
 	 * If there are no free slots, then it will be set to the
 	 * current end-of-file.
+
+	// dir_entry 테이블 (dir->inode)의 빈칸을 찾아서 삽입
 
 	 * inode_read_at() will only return a short read at end of file.
 	 * Otherwise, we'd need to verify that we didn't get a short
@@ -292,7 +300,7 @@ dir_readdir (struct dir *dir, char name[NAME_MAX + 1]) {
 
 	while (inode_read_at (dir->inode, &e, sizeof e, dir->pos) == sizeof e) {
 		dir->pos += sizeof e;
-		if (e.in_use) {
+		if (e.in_use && strcmp(e.name, ".") && strcmp(e.name,"..")) {
 			strlcpy (name, e.name, NAME_MAX + 1);
 			return true;
 		}

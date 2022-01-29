@@ -13,10 +13,9 @@ struct inode_disk {
 	disk_sector_t start;                /* First data sector. */
 	off_t length;                       /* File size in bytes. */
 	unsigned magic;                     /* Magic number. */
-
-    //project 4-2
-    bool isdir;
-	uint32_t unused[499];               /* Not used. */
+	//project 4-2
+	bool isdir;
+	uint8_t unused [499];				/* Not used. */
 };
 
 // In-memory inode. 
