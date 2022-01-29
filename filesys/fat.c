@@ -3,6 +3,7 @@
 #include "filesys/filesys.h"
 #include "threads/malloc.h"
 #include "threads/synch.h"
+#include "kernel/bitmap.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -20,8 +21,8 @@ struct fat_boot {
 struct fat_fs {
 	struct fat_boot bs;
 	unsigned int *fat;
-	unsigned int fat_length;
-	disk_sector_t data_start;
+	unsigned int fat_length; // how many clusters in the filesystem
+	disk_sector_t data_start; // in which sector we can start to store files
 	cluster_t last_clst;
 	struct lock write_lock;
 };
@@ -30,6 +31,16 @@ static struct fat_fs *fat_fs;
 
 void fat_boot_create (void);
 void fat_fs_init (void);
+
+struct bitmap *fat_bitmap;
+
+cluster_t get_empty_cluster () {
+	size_t clst = bitmap_scan_and_flip(fat_bitmap, 0, 1, false) + 1;
+	if (clst == BITMAP_ERROR)
+		return 0;
+	else 
+		return (cluster_t) clst;
+}
 
 void
 fat_init (void) {
@@ -49,6 +60,15 @@ fat_init (void) {
 	if (fat_fs->bs.magic != FAT_MAGIC)
 		fat_boot_create ();
 	fat_fs_init ();
+
+	fat_bitmap = bitmap_create(fat_fs->fat_length);
+}
+
+void init_fat_bitmap(void) {
+	for (int clst = 0; clst < fat_fs->fat_length; clst++){
+		if (fat_fs->fat[clst])
+			bitmap_set(fat_bitmap, clst, true);
+	}
 }
 
 void
@@ -153,6 +173,11 @@ fat_boot_create (void) {
 void
 fat_fs_init (void) {
 	/* TODO: Your code goes here. */
+	ASSERT(SECTORS_PER_CLUSTER == 1);
+	// FAT 의 섹터 수 x 512 bytes / cluster 당 sector 수
+	fat_fs->fat_length = fat_fs->bs.fat_sectors * DISK_SECTOR_SIZE / (sizeof(cluster_t) * SECTORS_PER_CLUSTER);
+	// DATA sector 가 시작하는 지점
+	fat_fs->data_start = fat_fs->bs.fat_start + fat_fs->bs.fat_sectors;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -162,9 +187,16 @@ fat_fs_init (void) {
 /* Add a cluster to the chain.
  * If CLST is 0, start a new chain.
  * Returns 0 if fails to allocate a new cluster. */
-cluster_t
-fat_create_chain (cluster_t clst) {
+cluster_t fat_create_chain (cluster_t clst) {
 	/* TODO: Your code goes here. */
+	cluster_t new_clst = get_empty_cluster();
+	if (new_clst != 0) {
+		fat_put(new_clst, EOChain);
+		if (clst != 0){
+			fat_put(clst, new_clst);
+		}
+	}
+	return new_clst;
 }
 
 /* Remove the chain of clusters starting from CLST.
@@ -172,22 +204,48 @@ fat_create_chain (cluster_t clst) {
 void
 fat_remove_chain (cluster_t clst, cluster_t pclst) {
 	/* TODO: Your code goes here. */
+	while(clst && clst != EOChain){
+		bitmap_set(fat_bitmap, clst - 1, false);
+		clst = fat_get(clst);
+	}
+	if (pclst != 0){
+		fat_put(pclst, EOChain);
+	}
 }
 
 /* Update a value in the FAT table. */
 void
 fat_put (cluster_t clst, cluster_t val) {
 	/* TODO: Your code goes here. */
+	ASSERT(clst >= 1);
+	if(!bitmap_test(fat_bitmap, clst - 1)) bitmap_mark(fat_bitmap, clst - 1);
+	fat_fs->fat[clst - 1] = val;
 }
 
 /* Fetch a value in the FAT table. */
 cluster_t
 fat_get (cluster_t clst) {
 	/* TODO: Your code goes here. */
+	ASSERT(clst >= 1);
+
+	if (clst > fat_fs->fat_length || !bitmap_test(fat_bitmap, clst - 1))
+		return 0; // error handling for fat_get(EOChain) or empty
+	return fat_fs->fat[clst - 1];
 }
 
 /* Covert a cluster # to a sector number. */
 disk_sector_t
 cluster_to_sector (cluster_t clst) {
 	/* TODO: Your code goes here. */
+	ASSERT(clst >= 1);
+
+	// clst 1 -> sector 158 (fat_fs->data_start)
+	return fat_fs->data_start + (clst - 1) * SECTORS_PER_CLUSTER;
+}
+
+cluster_t
+sector_to_cluster (disk_sector_t sector) {
+	ASSERT(sector >= fat_fs->data_start);
+
+	return sector - fat_fs->data_start  + 1;
 }

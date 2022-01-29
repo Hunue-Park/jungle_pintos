@@ -43,6 +43,15 @@ void close(int fd);
 
 void* mmap (void *addr, size_t length, int writable, int fd, off_t offset);
 void munmap (void *addr);
+
+// Project 4-2. Subdirectory
+bool chdir (const char *dir_input);
+bool mkdir (const char *dir_input);
+bool readdir (int fd, char* name);
+bool isdir (int fd);
+int inumber (int fd);
+int symlink (const char* target, const char* linkpath);
+
 /* System call.
  *
  * Previously system call services was handled by the interrupt handler
@@ -209,9 +218,9 @@ bool create(const char *filename, unsigned initial_size)
 	bool return_code;
 	check_address(filename);
 
-	lock_acquire(&filesys_lock); 
+	// lock_acquire(&filesys_lock); 
 	return_code = filesys_create(filename, initial_size);
-	lock_release (&filesys_lock);
+	// lock_release (&filesys_lock);
 	return return_code;
 }
 
@@ -219,9 +228,9 @@ bool remove(const char *filename)
 {
 	bool return_code;
 	check_address(filename);
-	lock_acquire(&filesys_lock);
+	// lock_acquire(&filesys_lock);
 	return_code = filesys_remove(filename);
-	lock_release(&filesys_lock);
+	// lock_release(&filesys_lock);
 	return return_code;
 }
 
