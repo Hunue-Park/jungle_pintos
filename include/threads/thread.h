@@ -129,6 +129,9 @@ struct thread {
 	void *stack_bottom;
 	void *rsp_stack;
 #endif
+#ifdef EFILESYS
+	struct dir *wd;
+#endif
 
 	/* Owned by thread.c. */
 	struct intr_frame tf;               /* Information for switching */
