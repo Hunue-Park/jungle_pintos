@@ -36,6 +36,7 @@
 #include "devices/disk.h"
 #include "filesys/filesys.h"
 #include "filesys/fsutil.h"
+#include "filesys/directory.h"
 #endif
 
 /* Page-map-level-4 with kernel mappings only. */
@@ -110,6 +111,7 @@ main (void) {
 	/* Initialize file system. */
 	disk_init ();
 	filesys_init (format_filesys);
+	thread_current()->wd = dir_open_root();
 #endif
 
 #ifdef VM

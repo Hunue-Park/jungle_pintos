@@ -21,6 +21,9 @@
 #ifdef VM
 #include "vm/vm.h"
 #endif
+#ifdef EFILESYS
+#include "filesys/directory.h"
+#endif
 
 
 static void process_cleanup (void);
@@ -119,7 +122,7 @@ initd (void *f_name) {
 	supplemental_page_table_init (&thread_current ()->spt);
 #endif
 
-	process_init ();
+	set_current_directory(dir_open_root());
 
 	if (process_exec (f_name) < 0)
 		PANIC("Fail to launch initd\n");
@@ -252,6 +255,14 @@ __do_fork (void *aux) {
 		}
 	}
 	current->fd_idx = parent->fd_idx;
+
+	// Project 4-2. Subdirectory
+	// Fork parent's wd
+	ASSERT(parent->wd != NULL);
+	// current->wd = parent->wd; // parent->wd inode 바뀌면 current->wd도 영향 받음
+	current->wd = dir_reopen(parent->wd); // set_current_directory
+
+
 	// child loaded successfully, wake up parent in process_fork
 	sema_up(&current->fork_sema);
 
@@ -368,6 +379,9 @@ process_exit (void) {
 	file_close(cur->running);
 
 	process_cleanup ();
+	#ifdef EFILESYS
+		dir_close(cur->wd);
+	#endif
 
 	// wake up blocked parent
 	sema_up(&cur->fork_sema);  // do_fork를 하던중 에러케이스로 인해 자식이 비정상 종료되었을 경우

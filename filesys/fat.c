@@ -173,11 +173,16 @@ fat_boot_create (void) {
 void
 fat_fs_init (void) {
 	/* TODO: Your code goes here. */
+
+	// Invariant : SECTORS_PER_CLUSTER == 1
 	ASSERT(SECTORS_PER_CLUSTER == 1);
-	// FAT 의 섹터 수 x 512 bytes / cluster 당 sector 수
-	fat_fs->fat_length = fat_fs->bs.fat_sectors * DISK_SECTOR_SIZE / (sizeof(cluster_t) * SECTORS_PER_CLUSTER);
-	// DATA sector 가 시작하는 지점
+
+	// how many clusters in the filesystem
+	// fat_fs->fat_length = fat_fs->bs.fat_sectors * DISK_SECTOR_SIZE / sizeof (cluster_t); // ex) 157 sectors * 512 bytes/sector % 4 bytes/cluster = 20096 clusters in FAT
+
+	// in which sector we can start to store FAT on the disk
 	fat_fs->data_start = fat_fs->bs.fat_start + fat_fs->bs.fat_sectors;
+	fat_fs->fat_length = sector_to_cluster(disk_size(filesys_disk))-1;
 }
 
 /*----------------------------------------------------------------------------*/
