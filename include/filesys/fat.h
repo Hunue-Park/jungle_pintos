@@ -8,6 +8,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "kernel/bitmap.h"
+
 typedef uint32_t cluster_t;  /* Index of a cluster within FAT. */
 
 #define FAT_MAGIC 0xEB3C9000 /* MAGIC string to identify FAT disk */
@@ -34,5 +36,8 @@ void fat_remove_chain (
 cluster_t fat_get (cluster_t clst);
 void fat_put (cluster_t clst, cluster_t val);
 disk_sector_t cluster_to_sector (cluster_t clst);
+/* ------------------Project 4. File system -------------------- */
+cluster_t sector_to_cluster (disk_sector_t sector);
+/* ------------------Project 4. File system -------------------- */
 
 #endif /* filesys/fat.h */
