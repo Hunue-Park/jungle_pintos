@@ -271,16 +271,18 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset) {
 		int min_left = inode_left < sector_left ? inode_left : sector_left;
 
 		/* Number of bytes to actually copy out of this sector. */
+		/* 아마도 최대 SECTOR SIZE만큼 읽는 듯 하다. */
 		int chunk_size = size < min_left ? size : min_left;
 		if (chunk_size <= 0)
 			break;
 
 		if (sector_ofs == 0 && chunk_size == DISK_SECTOR_SIZE) {
-			/* Read full sector directly into caller's buffer. */
+			/* 디스크에서 SECTOR SIZE만큼 읽어서 메모리의 BUFFER에 저장해준다.  */
 			disk_read (filesys_disk, sector_idx, buffer + bytes_read); 
 		} else {
-			/* Read sector into bounce buffer, then partially copy
-			 * into caller's buffer. */
+			/* 만약 SECTOR SIZE보다 적은 데이터가 디스크에 남았다면
+			   먼저 SECTOR SIZE만큼 메모리의 BOUNCE BUFFER에 복사한 다음 
+			   CALLER의 BUFFER로 실제 데이터만큼(SECTOR SIZE보다 적은) 복사한다. */
 			if (bounce == NULL) {
 				bounce = malloc (DISK_SECTOR_SIZE);
 				if (bounce == NULL)
@@ -305,19 +307,77 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset) {
  * less than SIZE if end of file is reached or an error occurs.
  * (Normally a write at end of file would extend the inode, but
  * growth is not yet implemented.) */
+
+/* 메모리의 BUFFER에서 SIZE만큼의 데이터를 INODE에 해당하는 디스크 파일의 OFFSET부터 쓴다. */
 off_t
 inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 		off_t offset) {
 	const uint8_t *buffer = buffer_;
 	off_t bytes_written = 0;
 	uint8_t *bounce = NULL;
+	/* ------------------Project 4. File system -------------------- */
+	bool grow = false;
+	uint8_t zero[DISK_SECTOR_SIZE];
 
+	/* 해당 파일이 WRITE 작업을 허용하지 않으면 0을 리턴한다. */
 	if (inode->deny_write_cnt)
 		return 0;
 
+	/* 아이노드의 데이터 영역에 충분한 공간이 있는지를 확인한다.
+	   WRITE가 끝나는 지점인 offset+size 까지의 공간이 있어야 한다.
+	   그 정도의 공간이 없으면 -1을 리턴한다. */
+	disk_sector_t sector_idx = byte_to_sector(inode, offset + size);
+
+	// #ifdef EFILESYS
+	/* 디스크에 충분한 공간이 없다면 파일을 EXTEND한다.
+	   EXTEND 시, EOF부터 WRITE를 끝내는 지점까지의 모든 데이터를 0으로 초기화한다. */
+	while (sector_idx == -1){
+		grow = true;  // 파일 확장이 일어난다는 것을 표시
+		off_t inode_len = inode_length(inode);  // 아이노드에 해당하는 파일의 데이터 영역 길이
+
+		// 파일 데이터 영역의 가장 끝 데이터 클러스터의 섹터 번호를 불러온다.
+		cluster_t endclst = sector_to_cluster(byte_to_sector(inode, inode_len - 1));
+		// endclst의 뒤에 클러스터 하나를 새로 만든다!
+		cluster_t newclst = inode_len == 0 ? endclst : fat_create_chain(endclst);
+		if (newclst == 0){
+			break;
+		}
+
+		/* EOF부터 OFFSET+SIZE까지의 디스크 공간들을 ZERO PADDING 해준다. */
+		memset (zero, 0, DISK_SECTOR_SIZE);
+
+		// 이전 EOF에서부터 EOF가 있는 클러스터의 끝까지를 디스크에 추가한다.
+		off_t inode_ofs = inode_len % DISK_SECTOR_SIZE;
+		if (inode_ofs != 0)
+			inode->data.length += DISK_SECTOR_SIZE - inode_ofs;
+
+		// 우선 write해야하는 디스크 섹터를 0으로 다 만들어준다.
+		disk_write (filesys_disk, cluster_to_sector(newclst), zero);
+		if (inode_ofs != 0){  
+			disk_read (filesys_disk, cluster_to_sector(newclst), zero);
+			memset(zero + inode_ofs + 1, 0, DISK_SECTOR_SIZE - inode_ofs); 
+			// 이전 EOF와 WRITE 시작 위치 사이의 간격은 0으로 채워져야 한다.
+			disk_write(filesys_disk, cluster_to_sector(endclst), zero);
+			/*
+					endclst          newclst (extended)
+				 ---------------     -----------
+				| data  0 0 0 0 | - | 0 0 0 0 0 |
+				 ---------------     -----------
+						↑ zero padding here!
+			*/
+		}
+
+		inode->data.length += DISK_SECTOR_SIZE;  // 파일 길이 추가한다.
+		sector_idx = byte_to_sector(inode, offset + size);  
+		// 다시 한번 WRITE 끝점까지 파일이 확장됐는지 검사한다.
+	}
+
+	/* WRITE를 시작한다. */
+	sector_idx = byte_to_sector (inode, offset); // OFFSET에 해당되는 SECTOR부터 시작한다.
+
+	/* SECTOR SIZE만큼 나누어서 클러스터에 기록한다. */
 	while (size > 0) {
 		/* Sector to write, starting byte offset within sector. */
-		disk_sector_t sector_idx = byte_to_sector (inode, offset);
 		int sector_ofs = offset % DISK_SECTOR_SIZE;
 
 		/* Bytes left in inode, bytes left in sector, lesser of the two. */
@@ -356,8 +416,13 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 		size -= chunk_size;
 		offset += chunk_size;
 		bytes_written += chunk_size;
+
+		disk_sector_t sector_idx = byte_to_sector (inode, offset);
 	}
 	free (bounce);
+
+	/* 아이노드 자체의 데이터를 디스크에 저장해준다. */
+	disk_write(filesys_disk, inode->sector, &inode->data);
 
 	return bytes_written;
 }
