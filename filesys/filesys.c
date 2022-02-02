@@ -23,8 +23,9 @@ filesys_init (bool format) {
 
 	inode_init ();
 
+
 #ifdef EFILESYS
-	fat_init ();
+	fat_init (); 
 
 	if (format)
 		do_format ();

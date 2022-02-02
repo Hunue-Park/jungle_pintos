@@ -10,13 +10,16 @@
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
 
+
+/* Project 4-1: Extensible Files*/
 /* On-disk inode.
  * Must be exactly DISK_SECTOR_SIZE bytes long. */
 struct inode_disk {
-	disk_sector_t start;                /* First data sector. */
-	off_t length;                       /* File size in bytes. */
-	unsigned magic;                     /* Magic number. */
-	uint32_t unused[125];               /* Not used. */
+	disk_sector_t start;                /* First data sector.  -> 4바이트 */
+	off_t length;                       /* File size in bytes. -> 4바이트 */
+	unsigned magic;                     /* Magic number. -> 4바이트 */
+	bool isdir;							/* 파일인지 디렉토리인지 체크하는 멤버 -> 1바이트 */
+	uint8_t unused[499];               /* Not used. */
 };
 
 /* Returns the number of sectors to allocate for an inode SIZE
@@ -43,8 +46,19 @@ struct inode {
 static disk_sector_t
 byte_to_sector (const struct inode *inode, off_t pos) {
 	ASSERT (inode != NULL);
-	if (pos < inode->data.length)
-		return inode->data.start + pos / DISK_SECTOR_SIZE;
+	if (pos < inode->data.length){
+		#ifdef EFILESYS
+			cluster_t clst = sector_to_cluster(inode->data.start);
+			for (unsigned i = 0; i < (pos / DISK_SECTOR_SIZE); i++) {
+					clst = fat_get(clst);
+					if (clst == 0)
+						return -1;
+			}
+			return cluster_to_sector(clst);
+		#else
+			return inode->data.start + pos / DISK_SECTOR_SIZE;
+		#endif
+	}
 	else
 		return -1;
 }
@@ -65,7 +79,7 @@ inode_init (void) {
  * Returns true if successful.
  * Returns false if memory or disk allocation fails. */
 bool
-inode_create (disk_sector_t sector, off_t length) {
+inode_create (disk_sector_t sector, off_t length, bool isdir) {
 	struct inode_disk *disk_inode = NULL;
 	bool success = false;
 
@@ -80,17 +94,50 @@ inode_create (disk_sector_t sector, off_t length) {
 		size_t sectors = bytes_to_sectors (length);
 		disk_inode->length = length;
 		disk_inode->magic = INODE_MAGIC;
+		disk_inode->isdir = isdir;
+		#ifdef EFILESYS
+		
+		cluster_t clst = sector_to_cluster(sector); 
+		cluster_t newclst = clst; // save clst in case of chaining failure
+
+		if(sectors == 0) disk_inode->start = cluster_to_sector(fat_create_chain(newclst));
+
+		for (int i = 0; i < sectors; i++){
+			newclst = fat_create_chain(newclst);
+			if (newclst == 0){ // chain 생성 실패 시 (fails to allocate a new cluster)
+				fat_remove_chain(clst, 0);
+				free(disk_inode);
+				return false;
+			}
+			if (i == 0){
+				clst = newclst;
+				disk_inode->start = cluster_to_sector(newclst); // set start point of the file
+			}
+		}
+		
+		disk_write (filesys_disk, sector, disk_inode);
+		if (sectors > 0) {
+			static char zeros[DISK_SECTOR_SIZE];
+			for (i = 0; i < sectors; i++){
+				ASSERT(clst != 0 || clst != EOChain);
+				disk_write (filesys_disk, cluster_to_sector(clst), zeros); // non-contiguous sectors 
+				clst = fat_get(clst); // find next cluster(=sector) in FAT
+			}
+		}
+		success = true;
+		#else
 		if (free_map_allocate (sectors, &disk_inode->start)) {
 			disk_write (filesys_disk, sector, disk_inode);
 			if (sectors > 0) {
 				static char zeros[DISK_SECTOR_SIZE];
 				size_t i;
 
-				for (i = 0; i < sectors; i++) 
-					disk_write (filesys_disk, disk_inode->start + i, zeros); 
+				for (i = 0; i < sectors; i++)
+					disk_write (filesys_disk, disk_inode->start + i, zeros);
 			}
 			success = true; 
 		} 
+		#endif
 		free (disk_inode);
 	}
 	return success;

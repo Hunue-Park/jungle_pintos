@@ -176,9 +176,11 @@ fat_fs_init (void) {
 	/* Project 4-1: FAT */
 	ASSERT(SECTORS_PER_CLUSTER==1);
 	/*fat_length: 파일 시스템에 얼마나 클러스터가 많은 지를 저장*/
-	fat_fs->fat_length = fat_fs->bs.total_sectors * DISK_SECTOR_SIZE /SECTORS_PER_CLUSTER;
+	fat_fs->fat_length = fat_fs->bs.total_sectors/SECTORS_PER_CLUSTER;
+	//fat_fs->fat_length = sector_to_cluster(disk_size(filesys_disk)) -1;
+	
 	/*data_start: 파일 저장 시작할 수 있는 섹터 위치 저장 => DATA Sector 시작 지점*/
-	fat_fs->data_start = fat_fs->bs.fat_start + fat_fs->bs.fat_sectors;
+	fat_fs->data_start = fat_fs->bs.fat_start + fat_fs->bs.fat_sectors; // data_start = 158
 	
 	// 이외 값들 초기화 -> 이건 아닌듯
 	// fat_fs->fat = 0;
